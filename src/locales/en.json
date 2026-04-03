@@ -1,0 +1,42 @@
+{
+  "common": {
+    "login": "Login",
+    "logout": "Logout",
+    "username": "Username",
+    "password": "Password",
+    "edit_profile": "Edit Profile",
+    "settings": "Settings",
+    "dashboard": "Dashboard",
+    "watchlist": "Watchlist",
+    "add": "Add",
+    "delete": "Delete",
+    "symbol": "Symbol",
+    "price": "Price",
+    "action": "Action",
+    "success": "Success",
+    "failed": "Failed"
+  },
+  "dashboard": {
+    "title": "Portfolio Dashboard",
+    "welcome": "Welcome back! Here's what's happening today.",
+    "total_value": "Total Portfolio Value",
+    "global_assets": "Global Assets Overview",
+    "profit_loss": "Total Profit/Loss",
+    "statistics": "Total Statistics",
+    "assets_count": "{{count}} Assets",
+    "breakdown": "Asset Breakdown",
+    "holdings": "Holdings"
+  },
+  "login": {
+    "title": "Invest Planner",
+    "subtitle": "Sign in to manage your portfolio",
+    "login_success": "Login Success!",
+    "login_failed": "Login Failed"
+  },
+  "watchlist": {
+    "subtitle": "Keep track of your favorite symbols and stay updated.",
+    "placeholder": "Enter ticker...",
+    "add_to_list": "Add",
+    "empty": "Your watchlist is empty."
+  }
+}
