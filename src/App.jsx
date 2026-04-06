@@ -1,11 +1,31 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import ProtectedRoute from './routes/ProtectedRoute'
 import MainLayout from './components/MainLayout'
-import Watchlist from './pages/Watchlist'
+import Market from './pages/Market'
+import axiosClient from './api/axiosClient'
+import UrlPP from './api/UrlPP'
+import { logout } from './features/authSlice'
 
 function App() {
+  const dispatch = useDispatch();
+  const token = useSelector((state) => state.auth.token);
+ 
+  useEffect(() => {
+    const validateToken = async () => {
+      if (!token) return;
+      try {
+        await axiosClient.get(UrlPP.User.Me);
+      } catch (err) {
+        // Interceptor handles 401, but we ensure state is cleared here 
+        dispatch(logout());
+      }
+    };
+    validateToken();
+  }, [token, dispatch]);
 
   return (
     <Routes>
@@ -27,10 +47,10 @@ function App() {
           </MainLayout>
         </ProtectedRoute>
       } />
-      <Route path="/watchlist" element={
+      <Route path="/market" element={
         <ProtectedRoute>
           <MainLayout>
-            <Watchlist />
+            <Market />
           </MainLayout>
         </ProtectedRoute>
       } />

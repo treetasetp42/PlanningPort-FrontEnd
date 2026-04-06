@@ -7,14 +7,20 @@
     "edit_profile": "Edit Profile",
     "settings": "Settings",
     "dashboard": "Dashboard",
-    "watchlist": "Watchlist",
+    "market": "Market",
     "add": "Add",
     "delete": "Delete",
     "symbol": "Symbol",
     "price": "Price",
     "action": "Action",
     "success": "Success",
-    "failed": "Failed"
+    "failed": "Failed",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "loading": "Loading...",
+    "manage": "Manage",
+    "done": "Done",
+    "confirm_delete": "Are you sure you want to delete this asset?"
   },
   "dashboard": {
     "title": "Portfolio Dashboard",
@@ -25,7 +31,9 @@
     "statistics": "Total Statistics",
     "assets_count": "{{count}} Assets",
     "breakdown": "Asset Breakdown",
-    "holdings": "Holdings"
+    "holdings": "Holdings",
+    "average_cost": "Avg Price",
+    "total_investment": "Total Investment"
   },
   "login": {
     "title": "Invest Planner",
@@ -37,6 +45,20 @@
     "subtitle": "Keep track of your favorite symbols and stay updated.",
     "placeholder": "Enter ticker...",
     "add_to_list": "Add",
-    "empty": "Your watchlist is empty."
+    "empty": "Your watchlist is empty.",
+    "wishlist": "Wishlist"
+  },
+  "transaction": {
+    "title": "Transaction: {{symbol}}",
+    "type": "Transaction Type",
+    "buy": "Buy",
+    "sell": "Sell",
+    "quantity": "Quantity",
+    "price": "Price per Unit",
+    "estimated_total": "Estimated Total",
+    "asset_type": "Asset Type",
+    "subtype": "Subtype",
+    "success": "Transaction Saved!",
+    "error": "Error processing transaction"
   }
 }

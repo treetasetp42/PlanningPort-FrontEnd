@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Container, TextField, Button, Typography, Box, Paper,
     useTheme, useMediaQuery
 } from '@mui/material';
 import axiosClient from '../api/axiosClient';
-import { useDispatch } from 'react-redux';
+import UrlPP from '../api/UrlPP';
+import { useDispatch, useSelector } from 'react-redux';
 import { loginSuccess } from '../features/authSlice';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -16,11 +17,18 @@ const Login = () => {
     const [credentials, setCredentials] = useState({ remoteUser: '', remotePassword: '' });
     const dispatch = useDispatch();
     const navigate = useNavigate();
+    const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+ 
+    useEffect(() => {
+        if (isAuthenticated) {
+            navigate('/');
+        }
+    }, [isAuthenticated, navigate]);
 
     const handleLogin = async (e) => {
         e.preventDefault();
         try {
-            const response = await axiosClient.post('/User/login', credentials);
+            const response = await axiosClient.post(UrlPP.User.Login, credentials);
             dispatch(loginSuccess(response.data));
             alert(t('login.login_success'));
             navigate('/dashboard');

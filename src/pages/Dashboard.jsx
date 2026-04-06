@@ -2,32 +2,54 @@ import { useEffect, useState } from 'react';
 import { Container, Typography, Grid, Paper, Box, CircularProgress, Divider, useMediaQuery, useTheme } from '@mui/material';
 import { useSelector } from 'react-redux';
 import axiosClient from '../api/axiosClient';
-import { ShowChart, Payments, Code, Language, CurrencyBitcoin } from '@mui/icons-material';
+import UrlPP from '../api/UrlPP';
+import { ShowChart, Payments, Code, Language, CurrencyBitcoin, Edit, Delete, Settings } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
+import { IconButton, Button as MuiButton } from '@mui/material';
+import TransactionModal from '../components/TransactionModal';
 
 const Dashboard = () => {
     const { t } = useTranslation();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [selectedAsset, setSelectedAsset] = useState(null);
+    const [modalOpen, setModalOpen] = useState(false);
     const userId = useSelector((state) => state.auth.user);
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
+    const fetchDashboard = async () => {
+        if (!userId) return;
+        try {
+            setLoading(true);
+            const res = await axiosClient.get(UrlPP.Transaction.Dashboard(userId));
+            setData(res.data);
+        } catch (err) {
+            console.error("Fetch error", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchDashboard = async () => {
-            if (!userId) return;
-            try {
-                setLoading(true);
-                const res = await axiosClient.get(`/Transaction/dashboard/${userId}`);
-                setData(res.data);
-            } catch (err) {
-                console.error("Fetch error", err);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchDashboard();
     }, [userId]);
+
+    const handleDelete = async (symbol) => {
+        if (!window.confirm(t('common.confirm_delete') || `Are you sure you want to remove ${symbol}?`)) return;
+        try {
+            await axiosClient.delete(UrlPP.Transaction.Delete(userId, symbol));
+            fetchDashboard();
+        } catch (err) {
+            alert(t('common.error'));
+        }
+    };
+
+    const handleEdit = (asset) => {
+        setSelectedAsset(asset);
+        setModalOpen(true);
+    };
 
     if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}><CircularProgress /></Box>;
 
@@ -55,7 +77,7 @@ const Dashboard = () => {
                             boxSizing: 'border-box',
                             bgcolor: 'primary.main',
                             color: 'primary.contrastText',
-                            borderRadius: { xs: 3, md: 4 },
+                            borderRadius: { xs: 2, md: 2 },
                             position: 'relative',
                             overflow: 'hidden',
                             display: 'flex',
@@ -90,21 +112,29 @@ const Dashboard = () => {
                 <Grid item xs={12} lg={4}>
                     <Grid container spacing={isMobile ? 2 : 3}>
                         <Grid item xs={12} sm={6} lg={12}>
-                            <Paper sx={{ p: 3, borderRadius: { xs: 3, md: 4 } }}>
-                                <Typography variant="caption" color="text.secondary" fontWeight="600" gutterBottom>
-                                    {t('dashboard.profit_loss')}
-                                </Typography>
-                                <Typography
-                                    variant={isMobile ? "h5" : "h4"}
-                                    fontWeight="800"
-                                    sx={{ color: data?.totalProfit >= 0 ? 'success.main' : 'error.main' }}
-                                >
-                                    {data?.totalProfit >= 0 ? '+' : '-'}${Math.abs(data?.totalProfit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </Typography>
+                            <Paper sx={{ p: 3, borderRadius: { xs: 2, md: 2 } }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary" fontWeight="600">{t('dashboard.total_investment')}</Typography>
+                                        <Typography variant="subtitle1" fontWeight="700">
+                                            ${(data?.totalInvestment || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        </Typography>
+                                    </Box>
+                                    <Box sx={{ textAlign: 'right' }}>
+                                        <Typography variant="caption" color="text.secondary" fontWeight="600">{t('dashboard.profit_loss')}</Typography>
+                                        <Typography
+                                            variant="subtitle1"
+                                            fontWeight="800"
+                                            sx={{ color: data?.totalProfit >= 0 ? 'success.main' : 'error.main' }}
+                                        >
+                                            {data?.totalProfit >= 0 ? '+' : '-'}${Math.abs(data?.totalProfit || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        </Typography>
+                                    </Box>
+                                </Box>
                             </Paper>
                         </Grid>
                         <Grid item xs={12} sm={6} lg={12}>
-                            <Paper sx={{ p: 3, borderRadius: { xs: 3, md: 4 } }}>
+                            <Paper sx={{ p: 3, borderRadius: { xs: 2, md: 2 } }}>
                                 <Typography variant="caption" color="text.secondary" fontWeight="600" gutterBottom>
                                     {t('dashboard.statistics')}
                                 </Typography>
@@ -118,9 +148,21 @@ const Dashboard = () => {
             </Grid>
 
             {/* Asset List Section */}
-            <Typography variant="h6" fontWeight="700" sx={{ mb: 2 }}>
-                {t('dashboard.breakdown')}
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" fontWeight="700">
+                    {t('dashboard.breakdown')}
+                </Typography>
+                <MuiButton
+                    size="small"
+                    startIcon={<Settings sx={{ fontSize: 16 }} />}
+                    onClick={() => setIsEditMode(!isEditMode)}
+                    variant={isEditMode ? "contained" : "outlined"}
+                    color={isEditMode ? "primary" : "inherit"}
+                    sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}
+                >
+                    {isEditMode ? t('common.done') || 'Done' : t('common.manage') || 'Manage'}
+                </MuiButton>
+            </Box>
 
             <Grid container spacing={isMobile ? 2 : 3}>
                 {data?.assets?.map((asset) => {
@@ -137,7 +179,7 @@ const Dashboard = () => {
                             <Paper
                                 sx={{
                                     p: { xs: 2, md: 3 },
-                                    borderRadius: { xs: 3, md: 4 },
+                                    borderRadius: { xs: 2, md: 2 },
                                     transition: 'transform 0.2s, box-shadow 0.2s',
                                     '&:hover': {
                                         transform: isMobile ? 'none' : 'translateY(-4px)',
@@ -152,19 +194,47 @@ const Dashboard = () => {
                                             {asset.assetType} • {asset.subtype}
                                         </Typography>
                                     </Box>
-                                    <Box sx={{ p: 1, bgcolor: 'action.hover', borderRadius: 2, display: 'flex', width: 34, height: 34, justifyContent: 'center', alignItems: 'center' }}>
-                                        {getIcon(asset.subtype)}
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        {isEditMode && (
+                                            <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={() => handleEdit(asset)}
+                                                    sx={{ bgcolor: 'action.hover', color: 'primary.main', width: 30, height: 30 }}
+                                                >
+                                                    <Edit sx={{ fontSize: 16 }} />
+                                                </IconButton>
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={() => handleDelete(asset.symbol)}
+                                                    sx={{ bgcolor: 'error.light', color: 'error.main', width: 30, height: 30 }}
+                                                >
+                                                    <Delete sx={{ fontSize: 16 }} />
+                                                </IconButton>
+                                            </Box>
+                                        )}
+                                        {!isEditMode && (
+                                            <Box sx={{ p: 1, bgcolor: 'action.hover', borderRadius: 2, display: 'flex', width: 34, height: 34, justifyContent: 'center', alignItems: 'center' }}>
+                                                {getIcon(asset.subtype)}
+                                            </Box>
+                                        )}
                                     </Box>
                                 </Box>
 
                                 <Divider sx={{ my: 2, opacity: 0.6 }} />
 
                                 <Grid container spacing={1}>
-                                    <Grid item xs={6}>
+                                    <Grid item xs={4}>
                                         <Typography variant="caption" color="text.secondary">{t('dashboard.holdings')}</Typography>
                                         <Typography variant="body2" fontWeight="700">{asset.holdings}</Typography>
                                     </Grid>
-                                    <Grid item xs={6} sx={{ textAlign: 'right' }}>
+                                    <Grid item xs={4} sx={{ textAlign: 'center' }}>
+                                        <Typography variant="caption" color="text.secondary">{t('dashboard.average_cost')}</Typography>
+                                        <Typography variant="body2" fontWeight="700">
+                                            ${(asset.averageCost || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        </Typography>
+                                    </Grid>
+                                    <Grid item xs={4} sx={{ textAlign: 'right' }}>
                                         <Typography variant="caption" color="text.secondary">{t('dashboard.profit_loss')}</Typography>
                                         <Typography
                                             variant="body2"
@@ -180,6 +250,22 @@ const Dashboard = () => {
                     );
                 })}
             </Grid>
+
+            {/* Modal สำหรับแก้ไขธุรกรรม  */}
+            {selectedAsset && (
+                <TransactionModal
+                    open={modalOpen}
+                    onClose={() => { setModalOpen(false); setSelectedAsset(null); }}
+                    symbol={selectedAsset.symbol}
+                    initialPrice={selectedAsset.averageCost}
+                    initialValues={selectedAsset}
+                    isEdit={true}
+                    onSuccess={() => {
+                        fetchDashboard();
+                        alert(t('common.success') || "Updated successfully");
+                    }}
+                />
+            )}
         </Container>
     );
 };

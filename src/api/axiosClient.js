@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const axiosClient = axios.create({
-    baseURL: '/api', // ใช้ร่วมกับ Proxy ใน vite.config.js  
+    baseURL: import.meta.env.VITE_API_BASE_URL + '/api', // ใช้ร่วมกับ Proxy ใน vite.config.js  
     headers: {
         'Content-Type': 'application/json',
     },

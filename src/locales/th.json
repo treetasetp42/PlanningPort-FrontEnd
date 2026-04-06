@@ -7,14 +7,20 @@
     "edit_profile": "แก้ไขโปรไฟล์",
     "settings": "ตั้งค่า",
     "dashboard": "แดชบอร์ด",
-    "watchlist": "รายการเฝ้าดู",
+    "market": "Market",
     "add": "เพิ่ม",
     "delete": "ลบ",
     "symbol": "สัญลักษณ์",
     "price": "ราคา",
     "action": "ดำเนินการ",
     "success": "สำเร็จ",
-    "failed": "ไม่สำเร็จ"
+    "failed": "ไม่สำเร็จ",
+    "cancel": "ยกเลิก",
+    "confirm": "ยืนยัน",
+    "loading": "กำลังโหลด...",
+    "manage": "จัดการ",
+    "done": "เรียบร้อย",
+    "confirm_delete": "คุณแน่ใจหรือไม่ว่าต้องการลบสินทรัพย์นี้?"
   },
   "dashboard": {
     "title": "แดชบอร์ดพอร์ตโฟลิโอ",
@@ -25,7 +31,9 @@
     "statistics": "สถิติรวม",
     "assets_count": "{{count}} สินทรัพย์",
     "breakdown": "การแยกรายละเอียดสินทรัพย์",
-    "holdings": "จำนวนที่ถือครอง"
+    "holdings": "จำนวนที่ถือครอง",
+    "average_cost": "ทุนเฉลี่ย",
+    "total_investment": "เงินลงทุนรวม"
   },
   "login": {
     "title": "Invest Planner",
@@ -37,6 +45,20 @@
     "subtitle": "ติดตามสัญลักษณ์ที่คุณชื่นชอบและรับข้อมูลล่าสุด",
     "placeholder": "ใส่สัญลักษณ์...",
     "add_to_list": "เพิ่ม",
-    "empty": "รายการเฝ้าดูของคุณว่างเปล่า"
+    "empty": "รายการเฝ้าดูของคุณว่างเปล่า",
+    "wishlist": "Wishlist"
+  },
+  "transaction": {
+    "title": "ธุรกรรม: {{symbol}}",
+    "type": "ประเภทธุรกรรม",
+    "buy": "ซื้อ",
+    "sell": "ขาย",
+    "quantity": "จำนวน",
+    "price": "ราคาต่อหน่วย",
+    "estimated_total": "มูลค่ารวมโดยประมาณ",
+    "asset_type": "ประเภทสินทรัพย์",
+    "subtype": "ข้อย่อย",
+    "success": "บันทึกธุรกรรมสำเร็จ!",
+    "error": "เกิดข้อผิดพลาดในการทำธุรกรรม"
   }
 }

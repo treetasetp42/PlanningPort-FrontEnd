@@ -59,7 +59,7 @@ const MainLayout = ({ children }) => {
 
     const menuItems = [
         { text: t('common.dashboard'), icon: <DashboardIcon />, path: '/dashboard' },
-        { text: t('common.watchlist'), icon: <ListAlt />, path: '/watchlist' },
+        { text: t('common.market'), icon: <ListAlt />, path: '/market' },
         { text: t('common.settings'), icon: <SettingsIcon />, path: '/settings' },
     ];
 
@@ -144,7 +144,7 @@ const MainLayout = ({ children }) => {
                             color="inherit"
                             edge="start"
                             onClick={() => setOpen(!open)}
-                            sx={{ 
+                            sx={{
                                 mr: isMobile ? 1 : 2,
                                 p: 1, // Larger hit area
                             }}
@@ -164,11 +164,11 @@ const MainLayout = ({ children }) => {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0.5 : 2 }}>
                         {/* Language Switcher */}
                         <Box sx={{ display: 'flex', bgcolor: 'action.hover', borderRadius: 2, p: 0.5, mr: 1 }}>
-                            <Button 
-                                size="small" 
+                            <Button
+                                size="small"
                                 onClick={() => changeLanguage('en')}
-                                sx={{ 
-                                    minWidth: 40, px: 1, 
+                                sx={{
+                                    minWidth: 40, px: 1,
                                     bgcolor: i18n.language.startsWith('en') ? 'background.paper' : 'transparent',
                                     color: i18n.language.startsWith('en') ? 'primary.main' : 'text.secondary',
                                     fontWeight: i18n.language.startsWith('en') ? 700 : 500,
@@ -177,11 +177,11 @@ const MainLayout = ({ children }) => {
                             >
                                 EN
                             </Button>
-                            <Button 
-                                size="small" 
+                            <Button
+                                size="small"
                                 onClick={() => changeLanguage('th')}
-                                sx={{ 
-                                    minWidth: 40, px: 1, 
+                                sx={{
+                                    minWidth: 40, px: 1,
                                     bgcolor: i18n.language.startsWith('th') ? 'background.paper' : 'transparent',
                                     color: i18n.language.startsWith('th') ? 'primary.main' : 'text.secondary',
                                     fontWeight: i18n.language.startsWith('th') ? 700 : 500,
