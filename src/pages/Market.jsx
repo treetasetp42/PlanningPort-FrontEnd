@@ -2,14 +2,20 @@ import { useEffect, useState } from 'react';
 import {
     Container, Typography, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, IconButton, TextField,
-    Button, Box, useTheme, useMediaQuery, Chip
+    Button, Box, useTheme, useMediaQuery, Chip, Tooltip
 } from '@mui/material';
 import TransactionModal from '../components/TransactionModal';
 import { useSelector } from 'react-redux';
 import axiosClient from '../api/axiosClient';
 import UrlPP from '../api/UrlPP';
 import TradingViewChart from '../components/TradingViewChart';
-import { Delete as DeleteIcon, Add as AddIcon, ShoppingCart as CartIcon, ShowChart as ChartIcon } from '@mui/icons-material';
+import { 
+    Delete as DeleteIcon, 
+    Add as AddIcon, 
+    ShoppingCart as CartIcon, 
+    ShowChart as ChartIcon,
+    Visibility as ViewIcon 
+} from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 
 // ─── Helper: parse any "EXCHANGE:SYMBOL" or plain "SYMBOL" string ──────────
@@ -96,17 +102,24 @@ const Market = () => {
             // Success Feedback
             fetchWatchlist();
         } catch (err) {
-            alert(err.response?.data || t('common.failed'));
+            // Check if the backend sent a specific error message (plain string from BadRequest)
+            const errorMsg = err.response?.data?.message || err.response?.data || t('common.failed');
+            alert(errorMsg);
+            console.error('Add failed:', err);
         }
     };
 
     // ── 5. Remove from watchlist ──────────────────────────────────────────────
     const handleRemove = async (item) => {
-        const exchange = item.exchange || 'NASDAQ';
+        const id = item.id;
+        const displayLabel = `${item.exchange || 'NASDAQ'}:${item.symbol}`;
+        if (!window.confirm(`${t('common.confirm_delete') || 'Delete'} ${displayLabel}?`)) return;
+
         try {
-            await axiosClient.delete(UrlPP.Watchlist.Remove(userId, exchange, item.symbol));
+            await axiosClient.delete(UrlPP.Watchlist.Remove(id));
             fetchWatchlist();
         } catch (err) {
+            alert(t('common.failed_delete') || "Failed to remove item.");
             console.error('Remove error', err);
         }
     };
@@ -217,12 +230,13 @@ const Market = () => {
                             <TableCell sx={{ fontWeight: 700 }}>{t('common.symbol')}</TableCell>
                             <TableCell sx={{ fontWeight: 700 }}>Exchange</TableCell>
                             <TableCell align="center" sx={{ fontWeight: 700 }}>{t('common.price')}</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 700 }}>{t('common.action')}</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 700 }}>24h Change</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 700, pr: 4 }}>{t('common.action')}</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
                         {list.map((item) => (
-                            <TableRow key={`${item.exchange}-${item.symbol}`} hover>
+                            <TableRow key={item.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                                 <TableCell sx={{ fontWeight: 'bold' }}>{item.symbol}</TableCell>
                                 <TableCell>
                                     <Chip
@@ -239,27 +253,66 @@ const Market = () => {
                                     </Typography>
                                 </TableCell>
                                 <TableCell align="center">
-                                    <IconButton
-                                        color="info"
-                                        onClick={() => handleViewChart(item)}
-                                        sx={{ bgcolor: 'info.light', '&:hover': { bgcolor: '#b2ebf2' }, width: 40, height: 40, mr: 0.5 }}
-                                    >
-                                        <ChartIcon fontSize="small" />
-                                    </IconButton>
-                                    <IconButton
-                                        color="primary"
-                                        onClick={() => handleBuyClick(item)}
-                                        sx={{ bgcolor: 'primary.light', '&:hover': { bgcolor: '#bbdefb' }, width: 40, height: 40, mr: 0.5 }}
-                                    >
-                                        <CartIcon fontSize="small" />
-                                    </IconButton>
-                                    <IconButton
-                                        color="error"
-                                        onClick={() => handleRemove(item)}
-                                        sx={{ bgcolor: 'error.light', '&:hover': { bgcolor: '#ffcdd2' }, width: 40, height: 40 }}
-                                    >
-                                        <DeleteIcon fontSize="small" />
-                                    </IconButton>
+                                    <Box sx={{ 
+                                        display: 'inline-flex', 
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        color: (item.dailyChange >= 0) ? 'success.main' : 'error.main'
+                                    }}>
+                                        <Typography variant="caption" fontWeight="900" sx={{ lineHeight: 1 }}>
+                                            {item.dailyChange >= 0 ? '+' : ''}
+                                            ${(item.dailyChange || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        </Typography>
+                                        <Typography variant="caption" fontWeight="800">
+                                            {item.dailyChange >= 0 ? '+' : ''}
+                                            {(item.dailyPercentChange || 0).toFixed(2)}%
+                                        </Typography>
+                                    </Box>
+                                </TableCell>
+                                <TableCell align="right" sx={{ pr: 2 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                                        <Tooltip title={t('common.view_chart') || "View Chart"}>
+                                            <IconButton
+                                                onClick={() => handleViewChart(item)}
+                                                sx={{ 
+                                                    color: 'white',
+                                                    bgcolor: 'info.main', 
+                                                    '&:hover': { bgcolor: 'info.dark' }, 
+                                                    width: 36, height: 36 
+                                                }}
+                                            >
+                                                <ChartIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+
+                                        <Tooltip title={t('transaction.buy') || "Buy"}>
+                                            <IconButton
+                                                onClick={() => handleBuyClick(item)}
+                                                sx={{ 
+                                                    color: 'white',
+                                                    bgcolor: 'primary.main', 
+                                                    '&:hover': { bgcolor: 'primary.dark' }, 
+                                                    width: 36, height: 36 
+                                                }}
+                                            >
+                                                <CartIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+
+                                        <Tooltip title={t('common.delete') || "Delete"}>
+                                            <IconButton
+                                                onClick={() => handleRemove(item)}
+                                                sx={{ 
+                                                    color: 'white',
+                                                    bgcolor: 'error.main', 
+                                                    '&:hover': { bgcolor: 'error.dark' }, 
+                                                    width: 36, height: 36 
+                                                }}
+                                            >
+                                                <DeleteIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                    </Box>
                                 </TableCell>
                             </TableRow>
                         ))}

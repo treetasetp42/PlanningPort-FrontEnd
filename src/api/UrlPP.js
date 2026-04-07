@@ -2,7 +2,7 @@ export const UrlPP = {
     Watchlist: {
         Get: (userId) => `/Watchlist/${userId}`,
         Add: (userId, exchange, symbol) => `/Watchlist/add?userId=${userId}&exchange=${exchange}&symbol=${symbol}`,
-        Remove: (userId, exchange, symbol) => `/Watchlist/remove?userId=${userId}&exchange=${exchange}&symbol=${symbol}`,
+        Remove: (id) => `/Watchlist/remove/${id}`,
     },
     User: {
         Login: '/User/login',

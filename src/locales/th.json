@@ -20,6 +20,7 @@
     "loading": "กำลังโหลด...",
     "manage": "จัดการ",
     "done": "เรียบร้อย",
+    "view_chart": "ดูแผนภูมิ",
     "confirm_delete": "คุณแน่ใจหรือไม่ว่าต้องการลบสินทรัพย์นี้?"
   },
   "dashboard": {
@@ -46,7 +47,8 @@
     "placeholder": "ใส่สัญลักษณ์...",
     "add_to_list": "เพิ่ม",
     "empty": "รายการเฝ้าดูของคุณว่างเปล่า",
-    "wishlist": "Wishlist"
+    "wishlist": "Wishlist",
+    "duplicate": "สินทรัพย์นี้มีอยู่ในรายการเฝ้าดูแล้ว"
   },
   "transaction": {
     "title": "ธุรกรรม: {{symbol}}",

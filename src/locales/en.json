@@ -20,6 +20,7 @@
     "loading": "Loading...",
     "manage": "Manage",
     "done": "Done",
+    "view_chart": "View Chart",
     "confirm_delete": "Are you sure you want to delete this asset?"
   },
   "dashboard": {
@@ -46,7 +47,8 @@
     "placeholder": "Enter ticker...",
     "add_to_list": "Add",
     "empty": "Your watchlist is empty.",
-    "wishlist": "Wishlist"
+    "wishlist": "Wishlist",
+    "duplicate": "This asset is already in your watchlist."
   },
   "transaction": {
     "title": "Transaction: {{symbol}}",
