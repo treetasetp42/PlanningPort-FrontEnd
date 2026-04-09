@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import ProtectedRoute from './routes/ProtectedRoute'
 import MainLayout from './components/MainLayout'
 import Market from './pages/Market'
+import Settings from './pages/Settings'
 import axiosClient from './api/axiosClient'
 import UrlPP from './api/UrlPP'
 import { logout } from './features/authSlice'
@@ -51,6 +52,13 @@ function App() {
         <ProtectedRoute>
           <MainLayout>
             <Market />
+          </MainLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/settings" element={
+        <ProtectedRoute>
+          <MainLayout>
+            <Settings />
           </MainLayout>
         </ProtectedRoute>
       } />

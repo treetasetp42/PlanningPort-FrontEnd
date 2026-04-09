@@ -7,6 +7,8 @@ import { store } from './store';
 import { getAppTheme } from './theme';
 import App from './App';
 import { BrowserRouter } from 'react-router-dom';
+import { SnackbarProvider } from 'notistack';
+import NotifierPipe from './components/NotifierPipe';
 
 const Root = () => {
   const { darkMode, primaryColor } = useSelector((state) => state.theme);
@@ -15,9 +17,12 @@ const Root = () => {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
+      <SnackbarProvider maxSnack={3} autoHideDuration={3000}>
+        <NotifierPipe />
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </SnackbarProvider>
     </ThemeProvider>
   );
 };

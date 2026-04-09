@@ -9,14 +9,16 @@ import { useSelector } from 'react-redux';
 import axiosClient from '../api/axiosClient';
 import UrlPP from '../api/UrlPP';
 import TradingViewChart from '../components/TradingViewChart';
-import { 
-    Delete as DeleteIcon, 
-    Add as AddIcon, 
-    ShoppingCart as CartIcon, 
+import {
+    Delete as DeleteIcon,
+    Add as AddIcon,
+    ShoppingCart as CartIcon,
     ShowChart as ChartIcon,
-    Visibility as ViewIcon 
+    Visibility as ViewIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
+import { useSnackbar } from 'notistack';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 // ─── Helper: parse any "EXCHANGE:SYMBOL" or plain "SYMBOL" string ──────────
 const parseSymbol = (input) => {
@@ -33,19 +35,20 @@ const parseSymbol = (input) => {
 
 const Market = () => {
     const { t } = useTranslation();
+    const { enqueueSnackbar } = useSnackbar();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
     const [list, setList] = useState([]);
-    // inputText: what the user types in the text field (raw, could be "AAPL" or "NASDAQ:AAPL")
     const [inputText, setInputText] = useState('');
-    // isSearchOpen: toggle for the search input
     const [isSearchOpen, setIsSearchOpen] = useState(false);
-    // activeSelection: {exchange, symbol} — the single source of truth for the chart & Add button
     const [activeSelection, setActiveSelection] = useState({ exchange: 'NASDAQ', symbol: 'AAPL' });
-
     const [selectedItem, setSelectedItem] = useState({ symbol: '', price: '' });
     const [modalOpen, setModalOpen] = useState(false);
+
+    // Confirm Dialog State
+    const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
+    const [itemToRemove, setItemToRemove] = useState(null);
     const userId = useSelector((state) => state.auth.user);
 
     // Derived: the full TradingView symbol string for the chart
@@ -93,40 +96,48 @@ const Market = () => {
             item => item.symbol.toUpperCase() === symbol && item.exchange?.toUpperCase() === exchange
         );
         if (alreadyExists) {
-            alert(t('watchlist.duplicate') || `${exchange}:${symbol} is already in your watchlist.`);
+            enqueueSnackbar(t('watchlist.duplicate') || `${exchange}:${symbol} is already in your watchlist.`, { variant: 'info' });
             return;
         }
 
         try {
             await axiosClient.post(UrlPP.Watchlist.Add(userId, exchange, symbol));
-            // Success Feedback
+            enqueueSnackbar(t('common.success'), { variant: 'success' });
             fetchWatchlist();
         } catch (err) {
-            // Check if the backend sent a specific error message (plain string from BadRequest)
             const errorMsg = err.response?.data?.message || err.response?.data || t('common.failed');
-            alert(errorMsg);
+            enqueueSnackbar(errorMsg, { variant: 'error' });
             console.error('Add failed:', err);
         }
     };
 
     // ── 5. Remove from watchlist ──────────────────────────────────────────────
-    const handleRemove = async (item) => {
-        const id = item.id;
-        const displayLabel = `${item.exchange || 'NASDAQ'}:${item.symbol}`;
-        if (!window.confirm(`${t('common.confirm_delete') || 'Delete'} ${displayLabel}?`)) return;
+    const handleRemoveRequest = (item) => {
+        setItemToRemove(item);
+        setRemoveDialogOpen(true);
+    };
+
+    const handleConfirmRemove = async () => {
+        if (!itemToRemove) return;
+        const id = itemToRemove.id;
 
         try {
             await axiosClient.delete(UrlPP.Watchlist.Remove(id));
+            enqueueSnackbar(t('common.success'), { variant: 'success' });
             fetchWatchlist();
         } catch (err) {
-            alert(t('common.failed_delete') || "Failed to remove item.");
+            enqueueSnackbar(t('common.failed_delete') || "Failed to remove item.", { variant: 'error' });
             console.error('Remove error', err);
         }
     };
 
     // ── 6. Open Transaction modal ─────────────────────────────────────────────
     const handleBuyClick = (item) => {
-        setSelectedItem({ symbol: item.symbol, price: item.currentPrice });
+        setSelectedItem({ 
+            symbol: item.symbol, 
+            price: item.currentPrice, 
+            exchange: item.exchange || 'NASDAQ' 
+        });
         setModalOpen(true);
     };
 
@@ -253,8 +264,8 @@ const Market = () => {
                                     </Typography>
                                 </TableCell>
                                 <TableCell align="center">
-                                    <Box sx={{ 
-                                        display: 'inline-flex', 
+                                    <Box sx={{
+                                        display: 'inline-flex',
                                         flexDirection: 'column',
                                         alignItems: 'center',
                                         color: (item.dailyChange >= 0) ? 'success.main' : 'error.main'
@@ -274,11 +285,11 @@ const Market = () => {
                                         <Tooltip title={t('common.view_chart') || "View Chart"}>
                                             <IconButton
                                                 onClick={() => handleViewChart(item)}
-                                                sx={{ 
+                                                sx={{
                                                     color: 'white',
-                                                    bgcolor: 'info.main', 
-                                                    '&:hover': { bgcolor: 'info.dark' }, 
-                                                    width: 36, height: 36 
+                                                    bgcolor: 'info.main',
+                                                    '&:hover': { bgcolor: 'info.dark' },
+                                                    width: 36, height: 36
                                                 }}
                                             >
                                                 <ChartIcon fontSize="small" />
@@ -288,11 +299,11 @@ const Market = () => {
                                         <Tooltip title={t('transaction.buy') || "Buy"}>
                                             <IconButton
                                                 onClick={() => handleBuyClick(item)}
-                                                sx={{ 
+                                                sx={{
                                                     color: 'white',
-                                                    bgcolor: 'primary.main', 
-                                                    '&:hover': { bgcolor: 'primary.dark' }, 
-                                                    width: 36, height: 36 
+                                                    bgcolor: 'primary.main',
+                                                    '&:hover': { bgcolor: 'primary.dark' },
+                                                    width: 36, height: 36
                                                 }}
                                             >
                                                 <CartIcon fontSize="small" />
@@ -301,12 +312,12 @@ const Market = () => {
 
                                         <Tooltip title={t('common.delete') || "Delete"}>
                                             <IconButton
-                                                onClick={() => handleRemove(item)}
-                                                sx={{ 
+                                                onClick={() => handleRemoveRequest(item)}
+                                                sx={{
                                                     color: 'white',
-                                                    bgcolor: 'error.main', 
-                                                    '&:hover': { bgcolor: 'error.dark' }, 
-                                                    width: 36, height: 36 
+                                                    bgcolor: 'error.main',
+                                                    '&:hover': { bgcolor: 'error.dark' },
+                                                    width: 36, height: 36
                                                 }}
                                             >
                                                 <DeleteIcon fontSize="small" />
@@ -329,14 +340,27 @@ const Market = () => {
                 </Table>
             </TableContainer>
 
-            {/* ── Transaction Modal ─────────────────────────────────────────── */}
-            <TransactionModal
-                open={modalOpen}
-                onClose={() => setModalOpen(false)}
-                symbol={selectedItem.symbol}
-                initialPrice={selectedItem.price}
-                onSuccess={handleTransactionSuccess}
+            {/* ── Confirm Delete Dialog ─────────────────────────────────────── */}
+            <ConfirmDialog
+                open={removeDialogOpen}
+                onClose={() => setRemoveDialogOpen(false)}
+                onConfirm={handleConfirmRemove}
+                title={t('common.delete')}
+                message={t('common.confirm_remove', { item: itemToRemove ? `${itemToRemove.exchange || 'NASDAQ'}:${itemToRemove.symbol}` : '' })}
+                severity="error"
             />
+
+            {/* ── Transaction Modal ─────────────────────────────────────────── */}
+            {modalOpen && (
+                <TransactionModal
+                    open={modalOpen}
+                    onClose={() => setModalOpen(false)}
+                    symbol={selectedItem.symbol}
+                    initialPrice={selectedItem.price}
+                    allowedTypes={['Buy']}
+                    onSuccess={handleTransactionSuccess}
+                />
+            )}
         </Container>
     );
 };

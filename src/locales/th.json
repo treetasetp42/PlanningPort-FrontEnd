@@ -4,7 +4,7 @@
     "logout": "ออกจากระบบ",
     "username": "ชื่อผู้ใช้",
     "password": "รหัสผ่าน",
-    "edit_profile": "แก้ไขโปรไฟล์",
+    "edit_profile": "ตั้งค่า",
     "settings": "ตั้งค่า",
     "dashboard": "แดชบอร์ด",
     "market": "Market",
@@ -16,12 +16,20 @@
     "success": "สำเร็จ",
     "failed": "ไม่สำเร็จ",
     "cancel": "ยกเลิก",
+    "close": "ปิด",
     "confirm": "ยืนยัน",
     "loading": "กำลังโหลด...",
     "manage": "จัดการ",
     "done": "เรียบร้อย",
     "view_chart": "ดูแผนภูมิ",
-    "confirm_delete": "คุณแน่ใจหรือไม่ว่าต้องการลบสินทรัพย์นี้?"
+    "confirm_delete": "คุณแน่ใจหรือไม่ว่าต้องการลบสินทรัพย์นี้?",
+    "confirm_remove": "คุณแน่ใจหรือไม่ว่าต้องการนำ {{item}} ออก?",
+    "deposit": "ฝากเงิน",
+    "withdraw": "ถอนเงิน",
+    "amount": "จำนวนเงิน",
+    "date": "วันที่",
+    "type": "ประเภท",
+    "total": "รวม"
   },
   "dashboard": {
     "title": "แดชบอร์ดพอร์ตโฟลิโอ",
@@ -34,7 +42,13 @@
     "breakdown": "การแยกรายละเอียดสินทรัพย์",
     "holdings": "จำนวนที่ถือครอง",
     "average_cost": "ทุนเฉลี่ย",
-    "total_investment": "เงินลงทุนรวม"
+    "total_investment": "เงินลงทุนรวม",
+    "buying_power": "อำนาจการซื้อ",
+    "deposit_cash": "ฝากเงินสด",
+    "withdraw_cash": "ถอนเงินสด",
+    "insufficient_balance": "ยอดคงเหลือไม่เพียงพอ",
+    "transaction_history": "ประวัติการทำธุรกรรม",
+    "no_transactions": "ไม่พบรายการธุรกรรม"
   },
   "login": {
     "title": "Invest Planner",
@@ -50,6 +64,26 @@
     "wishlist": "Wishlist",
     "duplicate": "สินทรัพย์นี้มีอยู่ในรายการเฝ้าดูแล้ว"
   },
+  "settings": {
+    "title": "ตั้งค่า",
+    "profile_section": "โปรไฟล์",
+    "appearance_section": "รูปลักษณ์",
+    "language_section": "ภาษา",
+    "theme_mode": "โหมดธีม",
+    "theme_color": "สีธีม",
+    "light": "สว่าง",
+    "dark": "มืด",
+    "account_section": "บัญชี",
+    "logout_desc": "ออกจากระบบจากบัญชีของคุณ"
+  },
+  "confirm": {
+    "logout_title": "ยืนยันการออกจากระบบ",
+    "logout_message": "คุณแน่ใจหรือไม่ว่าต้องการออกจากระบบ Invest Planner?",
+    "transaction_title": "ยืนยันรายการ",
+    "transaction_message": "คุณแน่ใจหรือไม่ว่าต้องการทำรายการ {{type}} สำหรับ {{symbol}}?",
+    "cash_title": "ยืนยันการทำรายการเงินสด",
+    "cash_message": "ดำเนินการ {{type}} จำนวน ${{amount}} ใช่หรือไม่?"
+  },
   "transaction": {
     "title": "ธุรกรรม: {{symbol}}",
     "type": "ประเภทธุรกรรม",
@@ -59,8 +93,9 @@
     "price": "ราคาต่อหน่วย",
     "estimated_total": "มูลค่ารวมโดยประมาณ",
     "asset_type": "ประเภทสินทรัพย์",
-    "subtype": "ข้อย่อย",
+    "subtype": "ประเภทย่อย",
     "success": "บันทึกธุรกรรมสำเร็จ!",
-    "error": "เกิดข้อผิดพลาดในการทำธุรกรรม"
+    "error": "เกิดข้อผิดพลาดในการทำธุรกรรม",
+    "insufficient_holdings": "จำนวนสินทรัพย์ไม่เพียงพอสำหรับการขาย"
   }
 }

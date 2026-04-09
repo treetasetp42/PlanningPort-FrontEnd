@@ -9,9 +9,11 @@ import { useDispatch, useSelector } from 'react-redux';
 import { loginSuccess } from '../features/authSlice';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useSnackbar } from 'notistack';
 
 const Login = () => {
     const { t } = useTranslation();
+    const { enqueueSnackbar } = useSnackbar();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [credentials, setCredentials] = useState({ remoteUser: '', remotePassword: '' });
@@ -30,10 +32,10 @@ const Login = () => {
         try {
             const response = await axiosClient.post(UrlPP.User.Login, credentials);
             dispatch(loginSuccess(response.data));
-            alert(t('login.login_success'));
+            enqueueSnackbar(t('login.login_success'), { variant: 'success' });
             navigate('/dashboard');
         } catch (error) {
-            alert(t('login.login_failed') + ': ' + (error.response?.data || ''));
+            enqueueSnackbar(t('login.login_failed') + ': ' + (error.response?.data || ''), { variant: 'error' });
         }
     };
 

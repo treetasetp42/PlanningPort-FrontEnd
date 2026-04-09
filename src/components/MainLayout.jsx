@@ -16,6 +16,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../features/authSlice';
 import { toggleTheme, setPrimaryColor } from '../features/themeSlice';
 import { useTranslation } from 'react-i18next';
+import ConfirmDialog from './ConfirmDialog';
 
 
 const drawerWidth = 240;
@@ -27,6 +28,7 @@ const MainLayout = ({ children }) => {
     const darkMode = useSelector((state) => state.theme.darkMode);
     const [open, setOpen] = useState(!isMobile);
     const [anchorEl, setAnchorEl] = useState(null);
+    const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
     const navigate = useNavigate();
     const dispatch = useDispatch();
 
@@ -42,7 +44,12 @@ const MainLayout = ({ children }) => {
     const handleProfileMenu = (event) => setAnchorEl(event.currentTarget);
     const handleClose = () => setAnchorEl(null);
 
-    const handleLogout = () => {
+    const handleLogoutClick = () => {
+        handleClose();
+        setConfirmLogoutOpen(true);
+    };
+
+    const handleConfirmLogout = () => {
         dispatch(logout());
         navigate('/login');
     };
@@ -162,61 +169,6 @@ const MainLayout = ({ children }) => {
                     </Box>
 
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0.5 : 2 }}>
-                        {/* Language Switcher */}
-                        <Box sx={{ display: 'flex', bgcolor: 'action.hover', borderRadius: 2, p: 0.5, mr: 1 }}>
-                            <Button
-                                size="small"
-                                onClick={() => changeLanguage('en')}
-                                sx={{
-                                    minWidth: 40, px: 1,
-                                    bgcolor: i18n.language.startsWith('en') ? 'background.paper' : 'transparent',
-                                    color: i18n.language.startsWith('en') ? 'primary.main' : 'text.secondary',
-                                    fontWeight: i18n.language.startsWith('en') ? 700 : 500,
-                                    '&:hover': { bgcolor: i18n.language.startsWith('en') ? 'background.paper' : 'action.selected' }
-                                }}
-                            >
-                                EN
-                            </Button>
-                            <Button
-                                size="small"
-                                onClick={() => changeLanguage('th')}
-                                sx={{
-                                    minWidth: 40, px: 1,
-                                    bgcolor: i18n.language.startsWith('th') ? 'background.paper' : 'transparent',
-                                    color: i18n.language.startsWith('th') ? 'primary.main' : 'text.secondary',
-                                    fontWeight: i18n.language.startsWith('th') ? 700 : 500,
-                                    '&:hover': { bgcolor: i18n.language.startsWith('th') ? 'background.paper' : 'action.selected' }
-                                }}
-                            >
-                                TH
-                            </Button>
-                        </Box>
-
-                        {!isMobile && (
-                            <Box sx={{ display: 'flex', gap: 1, mr: 1 }}>
-                                {colors.map((color) => (
-                                    <Box
-                                        key={color}
-                                        onClick={() => handleColorChange(color)}
-                                        sx={{
-                                            width: 18,
-                                            height: 18,
-                                            borderRadius: '50%',
-                                            bgcolor: color,
-                                            cursor: 'pointer',
-                                            border: (theme) => theme.palette.primary.main === color ? `2px solid ${theme.palette.text.primary}` : '2px solid transparent',
-                                            '&:hover': { transform: 'scale(1.2)' },
-                                            transition: 'transform 0.2s'
-                                        }}
-                                    />
-                                ))}
-                            </Box>
-                        )}
-
-                        <IconButton sx={{ color: 'text.secondary' }} onClick={handleThemeToggle}>
-                            {darkMode ? <Brightness7 fontSize={isMobile ? "small" : "medium"} /> : <Brightness4 fontSize={isMobile ? "small" : "medium"} />}
-                        </IconButton>
-
                         <IconButton onClick={handleProfileMenu} sx={{ p: 0.5 }}>
                             <Avatar sx={{ width: isMobile ? 28 : 35, height: isMobile ? 28 : 35, bgcolor: 'primary.main', fontSize: isMobile ? '0.75rem' : '0.9rem', fontWeight: 600 }}>
                                 PP
@@ -225,21 +177,24 @@ const MainLayout = ({ children }) => {
                     </Box>
 
                     <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>
-                        <MenuItem onClick={() => { handleClose(); navigate('/profile'); }}>{t('common.edit_profile')}</MenuItem>
-                        <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
+                        <MenuItem onClick={() => { handleClose(); navigate('/settings'); }}>{t('common.settings')}</MenuItem>
+                        <MenuItem onClick={handleLogoutClick} sx={{ color: 'error.main' }}>
                             <ListItemIcon><LogoutIcon fontSize="small" color="error" /></ListItemIcon>
                             {t('common.logout')}
                         </MenuItem>
-                        {isMobile && <Divider />}
-                        {isMobile && colors.map((color) => (
-                            <MenuItem key={color} onClick={() => { handleColorChange(color); handleClose(); }}>
-                                <Box sx={{ width: 14, height: 14, bgcolor: color, borderRadius: '50%', mr: 1 }} />
-                                {t('common.settings')}
-                            </MenuItem>
-                        ))}
                     </Menu>
                 </Toolbar>
             </AppBar>
+
+            <ConfirmDialog 
+                open={confirmLogoutOpen}
+                onClose={() => setConfirmLogoutOpen(false)}
+                onConfirm={handleConfirmLogout}
+                title={t('confirm.logout_title')}
+                message={t('confirm.logout_message')}
+                confirmText={t('common.logout')}
+                severity="error"
+            />
 
             <Drawer
                 key={isMobile ? 'mobile' : 'desktop'} // Force remount on resize to prevent state traps
@@ -266,7 +221,8 @@ const MainLayout = ({ children }) => {
                 component="main"
                 sx={{
                     flexGrow: 1,
-                    p: isMobile ? 2 : 4,
+                    px: isMobile ? 0 : 4,
+                    py: isMobile ? 2 : 4,
                     mt: 8,
                     width: '100%',
                     transition: (theme) => theme.transitions.create('margin', {

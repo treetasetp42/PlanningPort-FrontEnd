@@ -4,7 +4,7 @@
     "logout": "Logout",
     "username": "Username",
     "password": "Password",
-    "edit_profile": "Edit Profile",
+    "edit_profile": "Settings",
     "settings": "Settings",
     "dashboard": "Dashboard",
     "market": "Market",
@@ -16,12 +16,20 @@
     "success": "Success",
     "failed": "Failed",
     "cancel": "Cancel",
+    "close": "Close",
     "confirm": "Confirm",
     "loading": "Loading...",
     "manage": "Manage",
     "done": "Done",
     "view_chart": "View Chart",
-    "confirm_delete": "Are you sure you want to delete this asset?"
+    "confirm_delete": "Are you sure you want to delete this asset?",
+    "confirm_remove": "Are you sure you want to remove {{item}}?",
+    "deposit": "Deposit",
+    "withdraw": "Withdraw",
+    "amount": "Amount",
+    "date": "Date",
+    "type": "Type",
+    "total": "Total"
   },
   "dashboard": {
     "title": "Portfolio Dashboard",
@@ -34,7 +42,13 @@
     "breakdown": "Asset Breakdown",
     "holdings": "Holdings",
     "average_cost": "Avg Price",
-    "total_investment": "Total Investment"
+    "total_investment": "Total Investment",
+    "buying_power": "Buying Power",
+    "deposit_cash": "Deposit Cash",
+    "withdraw_cash": "Withdraw Cash",
+    "insufficient_balance": "Insufficient balance",
+    "transaction_history": "Transaction History",
+    "no_transactions": "No transactions found"
   },
   "login": {
     "title": "Invest Planner",
@@ -50,6 +64,26 @@
     "wishlist": "Wishlist",
     "duplicate": "This asset is already in your watchlist."
   },
+  "settings": {
+    "title": "Settings",
+    "profile_section": "Profile",
+    "appearance_section": "Appearance",
+    "language_section": "Language",
+    "theme_mode": "Theme Mode",
+    "theme_color": "Theme Color",
+    "light": "Light",
+    "dark": "Dark",
+    "account_section": "Account",
+    "logout_desc": "Logout from your account"
+  },
+  "confirm": {
+    "logout_title": "Confirm Logout",
+    "logout_message": "Are you sure you want to log out of Invest Planner?",
+    "transaction_title": "Confirm Transaction",
+    "transaction_message": "Are you sure you want to execute this {{type}} order for {{symbol}}?",
+    "cash_title": "Confirm Cash Movement",
+    "cash_message": "Proceed with this {{type}} of ${{amount}}?"
+  },
   "transaction": {
     "title": "Transaction: {{symbol}}",
     "type": "Transaction Type",
@@ -61,6 +95,7 @@
     "asset_type": "Asset Type",
     "subtype": "Subtype",
     "success": "Transaction Saved!",
-    "error": "Error processing transaction"
+    "error": "Error processing transaction",
+    "insufficient_holdings": "Insufficient holdings to sell."
   }
 }
