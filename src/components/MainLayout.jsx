@@ -17,6 +17,8 @@ import { logout } from '../features/authSlice';
 import { toggleTheme, setPrimaryColor } from '../features/themeSlice';
 import { useTranslation } from 'react-i18next';
 import ConfirmDialog from './ConfirmDialog';
+import axiosClient from '../api/axiosClient';
+import UrlPP from '../api/UrlPP';
 
 
 const drawerWidth = 240;
@@ -32,9 +34,29 @@ const MainLayout = ({ children }) => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
 
+    const [userData, setUserData] = useState({ username: '', displayName: '', avatarUrl: '' });
+
+    const getAvatarUrl = (path) => {
+        if (!path) return null;
+        if (path.startsWith('http')) return path;
+        return `${import.meta.env.VITE_API_BASE_URL}${path}`;
+    };
+
     const changeLanguage = (lng) => {
         i18n.changeLanguage(lng);
     };
+
+    useEffect(() => {
+        const fetchUserData = async () => {
+            try {
+                const response = await axiosClient.get(UrlPP.User.Me);
+                setUserData(response.data);
+            } catch (err) {
+                console.error("Failed to fetch user data in MainLayout", err);
+            }
+        };
+        fetchUserData();
+    }, []);
 
     // Auto-close sidebar on mobile transition
     useEffect(() => {
@@ -170,14 +192,35 @@ const MainLayout = ({ children }) => {
 
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0.5 : 2 }}>
                         <IconButton onClick={handleProfileMenu} sx={{ p: 0.5 }}>
-                            <Avatar sx={{ width: isMobile ? 28 : 35, height: isMobile ? 28 : 35, bgcolor: 'primary.main', fontSize: isMobile ? '0.75rem' : '0.9rem', fontWeight: 600 }}>
-                                PP
+                            <Avatar 
+                                src={getAvatarUrl(userData.avatarUrl)}
+                                sx={{ 
+                                    width: isMobile ? 28 : 35, 
+                                    height: isMobile ? 28 : 35, 
+                                    bgcolor: 'primary.main', 
+                                    fontSize: isMobile ? '0.75rem' : '0.9rem', 
+                                    fontWeight: 600 
+                                }}
+                            >
+                                {!userData.avatarUrl && (userData.displayName || userData.username || 'U').charAt(0).toUpperCase()}
                             </Avatar>
                         </IconButton>
                     </Box>
 
                     <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>
-                        <MenuItem onClick={() => { handleClose(); navigate('/settings'); }}>{t('common.settings')}</MenuItem>
+                        <Box sx={{ px: 2, py: 1.5, minWidth: 180 }}>
+                            <Typography variant="subtitle2" fontWeight="800" noWrap>
+                                {userData.displayName || userData.username || 'User'}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" noWrap>
+                                {userData.role || 'Member'}
+                            </Typography>
+                        </Box>
+                        <Divider sx={{ mb: 1 }} />
+                        <MenuItem onClick={() => { handleClose(); navigate('/settings'); }}>
+                            <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
+                            {t('common.settings')}
+                        </MenuItem>
                         <MenuItem onClick={handleLogoutClick} sx={{ color: 'error.main' }}>
                             <ListItemIcon><LogoutIcon fontSize="small" color="error" /></ListItemIcon>
                             {t('common.logout')}
