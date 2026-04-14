@@ -98,9 +98,11 @@ const MainLayout = ({ children }) => {
     const drawerContent = (
         <>
             <Toolbar sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: [1] }}>
-                <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Box component="img" src="/favicon.svg" sx={{ width: 32, height: 32 }} />
-                    <Typography variant="h6" fontWeight="800">Invest Planner</Typography>
+                <Box 
+                    sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }}
+                    onClick={() => navigate('/dashboard')}
+                >
+                    <Box component="img" src="/favicon.svg" sx={{ width: 170, height: 70 }} />
                 </Box>
                 {isMobile && (
                     <IconButton onClick={() => setOpen(false)}>
@@ -108,7 +110,6 @@ const MainLayout = ({ children }) => {
                     </IconButton>
                 )}
             </Toolbar>
-            <Divider sx={{ opacity: 0.5 }} />
             <Box sx={{ overflow: 'auto', py: 2 }}>
                 <List sx={{ px: 1.5 }}>
                     {menuItems.map((item) => {
@@ -192,14 +193,14 @@ const MainLayout = ({ children }) => {
 
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0.5 : 2 }}>
                         <IconButton onClick={handleProfileMenu} sx={{ p: 0.5 }}>
-                            <Avatar 
+                            <Avatar
                                 src={getAvatarUrl(userData.avatarUrl)}
-                                sx={{ 
-                                    width: isMobile ? 28 : 35, 
-                                    height: isMobile ? 28 : 35, 
-                                    bgcolor: 'primary.main', 
-                                    fontSize: isMobile ? '0.75rem' : '0.9rem', 
-                                    fontWeight: 600 
+                                sx={{
+                                    width: isMobile ? 28 : 35,
+                                    height: isMobile ? 28 : 35,
+                                    bgcolor: 'primary.main',
+                                    fontSize: isMobile ? '0.75rem' : '0.9rem',
+                                    fontWeight: 600
                                 }}
                             >
                                 {!userData.avatarUrl && (userData.displayName || userData.username || 'U').charAt(0).toUpperCase()}
@@ -217,6 +218,12 @@ const MainLayout = ({ children }) => {
                             </Typography>
                         </Box>
                         <Divider sx={{ mb: 1 }} />
+                        <MenuItem onClick={() => { handleThemeToggle(); handleClose(); }}>
+                            <ListItemIcon>
+                                {darkMode ? <Brightness7 fontSize="small" /> : <Brightness4 fontSize="small" />}
+                            </ListItemIcon>
+                            {darkMode ? t('settings.light') : t('settings.dark')}
+                        </MenuItem>
                         <MenuItem onClick={() => { handleClose(); navigate('/settings'); }}>
                             <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
                             {t('common.settings')}
@@ -229,7 +236,7 @@ const MainLayout = ({ children }) => {
                 </Toolbar>
             </AppBar>
 
-            <ConfirmDialog 
+            <ConfirmDialog
                 open={confirmLogoutOpen}
                 onClose={() => setConfirmLogoutOpen(false)}
                 onConfirm={handleConfirmLogout}

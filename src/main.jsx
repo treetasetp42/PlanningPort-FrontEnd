@@ -11,8 +11,8 @@ import { SnackbarProvider } from 'notistack';
 import NotifierPipe from './components/NotifierPipe';
 
 const Root = () => {
-  const { darkMode, primaryColor } = useSelector((state) => state.theme);
-  const theme = getAppTheme(darkMode, primaryColor);
+  const { darkMode, primaryColor, fontSize } = useSelector((state) => state.theme);
+  const theme = getAppTheme(darkMode, primaryColor, fontSize);
 
   return (
     <ThemeProvider theme={theme}>

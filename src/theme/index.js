@@ -63,7 +63,52 @@ const theme = createTheme({
     },
 });
 
-export const getAppTheme = (darkMode, primaryColor = '#6C5DD3') => createTheme({
+/**
+ * Typography scales per font size preset.
+ * Large mode: h1-h4 are locked at MUI defaults; only small text variants grow.
+ * Small mode: base fontSize reduced so all variants scale down proportionally.
+ * Normal mode: MUI default (fontSize: 14).
+ */
+const getTypographyScale = (fontSize) => {
+    if (fontSize === 'small') {
+        return {
+            fontFamily: "'Public Sans', sans-serif",
+            fontSize: 12, // base rem multiplier — all variants scale down
+            button: { textTransform: 'none', fontWeight: 600 },
+        };
+    }
+
+    if (fontSize === 'large') {
+        return {
+            fontFamily: "'Public Sans', sans-serif",
+            fontSize: 14, // keep base same — we control individual variants below
+            button: { textTransform: 'none', fontWeight: 600 },
+            // Lock big headings — keep them at MUI defaults so they don't shrink
+            h1: { fontSize: '6rem', fontWeight: 700 },      
+            h2: { fontSize: '3.75rem', fontWeight: 700 },   
+            h3: { fontSize: '3rem', fontWeight: 700 },      
+            h4: { fontSize: '2.125rem', fontWeight: 700 }, 
+            // Scale up smaller text variants for readability
+            h5: { fontSize: '1.5rem', fontWeight: 600 },    
+            h6: { fontSize: '1.25rem', fontWeight: 600 },   
+            subtitle1: { fontSize: '1.125rem', fontWeight: 600 }, 
+            subtitle2: { fontSize: '1.0625rem', fontWeight: 600 },
+            body1: { fontSize: '1.125rem' },                      
+            body2: { fontSize: '1.0625rem' },                     
+            caption: { fontSize: '1rem' },                        
+            overline: { fontSize: '0.875rem' },                   
+        };
+    }
+
+    // 'normal' — MUI defaults
+    return {
+        fontFamily: "'Public Sans', sans-serif",
+        fontSize: 14,
+        button: { textTransform: 'none', fontWeight: 600 },
+    };
+};
+
+export const getAppTheme = (darkMode, primaryColor = '#6C5DD3', fontSize = 'normal') => createTheme({
     palette: {
         mode: darkMode ? 'dark' : 'light',
         primary: { main: primaryColor },
@@ -80,16 +125,13 @@ export const getAppTheme = (darkMode, primaryColor = '#6C5DD3') => createTheme({
     shape: {
         borderRadius: 12,
     },
-    typography: {
-        fontFamily: "'Public Sans', sans-serif",
-        button: { textTransform: 'none', fontWeight: 600 },
-    },
+    typography: getTypographyScale(fontSize),
     components: {
         MuiPaper: {
             styleOverrides: {
                 root: {
-                    boxShadow: darkMode 
-                        ? '0px 4px 20px rgba(0, 0, 0, 0.2)' 
+                    boxShadow: darkMode
+                        ? '0px 4px 20px rgba(0, 0, 0, 0.2)'
                         : '0px 4px 20px rgba(0, 0, 0, 0.05)',
                     backgroundImage: 'none',
                 },

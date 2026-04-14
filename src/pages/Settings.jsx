@@ -20,7 +20,7 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { toggleTheme, setPrimaryColor } from '../features/themeSlice';
+import { toggleTheme, setPrimaryColor, setFontSize } from '../features/themeSlice';
 import { logout } from '../features/authSlice';
 import axiosClient from '../api/axiosClient';
 import UrlPP from '../api/UrlPP';
@@ -34,6 +34,7 @@ const Settings = () => {
     const navigate = useNavigate();
     const darkMode = useSelector((state) => state.theme.darkMode);
     const primaryColor = useSelector((state) => state.theme.primaryColor);
+    const fontSize = useSelector((state) => state.theme.fontSize);
     const userId = useSelector((state) => state.auth.user);
 
     const [userData, setUserData] = useState({ username: '', displayName: '', avatarUrl: '' });
@@ -47,6 +48,7 @@ const Settings = () => {
     const [editData, setEditData] = useState({
         username: '',
         displayName: '',
+        email: '',
         avatarFile: null,
         deleteAvatar: false,
         previewUrl: ''
@@ -74,6 +76,7 @@ const Settings = () => {
             setEditData({
                 username: response.data.username || '',
                 displayName: response.data.displayName || '',
+                email: response.data.email || '',
                 avatarFile: null,
                 deleteAvatar: false,
                 previewUrl: getAvatarUrl(response.data.avatarUrl)
@@ -152,6 +155,7 @@ const Settings = () => {
             const formData = new FormData();
             formData.append('RemoteUser', editData.username);
             formData.append('DisplayName', editData.displayName);
+            formData.append('Email', editData.email);
             if (editData.avatarFile) {
                 formData.append('AvatarFile', editData.avatarFile, 'avatar.jpg');
             }
@@ -332,7 +336,41 @@ const Settings = () => {
 
                     <Divider variant="inset" component="li" />
 
-                    {/* 3. Language Switcher */}
+                    {/* 3. Font Size */}
+                    <ListItem sx={{ py: 2, alignItems: 'center' }}>
+                        <ListItemIcon>
+                            <Box sx={{ display: 'flex', alignItems: 'baseline', color: 'primary.main', fontWeight: 800, lineHeight: 1, ml: 0.25 }}>
+                                <span style={{ fontSize: '0.7rem' }}>A</span>
+                                <span style={{ fontSize: '1.1rem', margin: '0 1px' }}>A</span>
+                                <span style={{ fontSize: '1.5rem' }}>A</span>
+                            </Box>
+                        </ListItemIcon>
+                        <ListItemText
+                            primary={t('settings.font_size')}
+                            primaryTypographyProps={{ fontWeight: 700 }}
+                            sx={{ minWidth: 150 }}
+                        />
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            {[{ key: 'small', label: t('settings.font_small'), size: '0.75rem' },
+                              { key: 'normal', label: t('settings.font_normal'), size: '0.875rem' },
+                              { key: 'large',  label: t('settings.font_large'),  size: '1.0625rem' }]
+                              .map(({ key, label, size }) => (
+                                <Button
+                                    key={key}
+                                    size="small"
+                                    variant={fontSize === key ? 'contained' : 'outlined'}
+                                    onClick={() => dispatch(setFontSize(key))}
+                                    sx={{ borderRadius: 2, px: 1.5, fontWeight: 700, minWidth: 0, fontSize: size }}
+                                >
+                                    {label}
+                                </Button>
+                            ))}
+                        </Box>
+                    </ListItem>
+
+                    <Divider variant="inset" component="li" />
+
+                    {/* 4. Language Switcher */}
                     <ListItem sx={{ py: 2 }}>
                         <ListItemIcon><Language color="primary" /></ListItemIcon>
                         <ListItemText
@@ -483,7 +521,7 @@ const Settings = () => {
                                     boxShadow: theme.shadows[3]
                                 }}
                             >
-                                {!editData.previewUrl && (editData.displayName || 'U').charAt(0).toUpperCase()}
+                                {!editData.previewUrl && (editData.displayName).charAt(0).toUpperCase()}
                             </Avatar>
                             <Box sx={{ position: 'absolute', bottom: 0, right: 0, display: 'flex', gap: 0.5 }}>
                                 <IconButton
@@ -512,6 +550,8 @@ const Settings = () => {
                         label="Username"
                         value={editData.username}
                         onChange={(e) => setEditData({ ...editData, username: e.target.value })}
+                        disabled={userData.username !== userData.email}
+                        helperText={userData.username !== userData.email ? "Username cannot be changed once set." : ""}
                         sx={{ mt: 3 }}
                     />
                     <TextField
@@ -519,6 +559,15 @@ const Settings = () => {
                         label={t('settings.display_name')}
                         value={editData.displayName}
                         onChange={(e) => setEditData({ ...editData, displayName: e.target.value })}
+                        sx={{ mt: 2 }}
+                    />
+                    <TextField
+                        fullWidth
+                        label="Email"
+                        value={editData.email}
+                        onChange={(e) => setEditData({ ...editData, email: e.target.value })}
+                        disabled={userData.isGoogleLinked}
+                        helperText={userData.isGoogleLinked ? "Email cannot be changed while linked to Google" : ""}
                         sx={{ mt: 2 }}
                     />
                 </DialogContent>

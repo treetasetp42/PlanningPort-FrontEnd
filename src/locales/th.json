@@ -2,6 +2,7 @@
   "common": {
     "login": "เข้าสู่ระบบ",
     "logout": "ออกจากระบบ",
+    "update": "อัปเดต",
     "username": "ชื่อผู้ใช้",
     "password": "รหัสผ่าน",
     "edit_profile": "ตั้งค่า",
@@ -49,11 +50,12 @@
     "withdraw_cash": "ถอนเงินสด",
     "insufficient_balance": "ยอดคงเหลือไม่เพียงพอ",
     "transaction_history": "ประวัติการทำธุรกรรม",
-    "no_transactions": "ไม่พบรายการธุรกรรม"
+    "no_transactions": "ไม่พบรายการธุรกรรม",
+    "email": "กรุณากรอกอีเมลของคุณ"
   },
   "login": {
     "title": "Invest Planner",
-    "subtitle": "ลงชื่อเข้าใช้เพื่อจัดการพอร์ตโฟลิโอของคุณ",
+    "subtitle": "วางแผนความมั่งคั่ง สร้างอนาคตของคุณ",
     "login_success": "เข้าสู่ระบบสำเร็จ!",
     "login_failed": "เข้าสู่ระบบไม่สำเร็จ",
     "forgot_password_link": "ลืมรหัสผ่าน?",
@@ -135,7 +137,11 @@
     "edit_profile_title": "แก้ไขโปรไฟล์",
     "save_changes": "บันทึกการเปลี่ยนแปลง",
     "display_name": "ชื่อที่แสดง",
-    "profile_updated": "อัปเดตโปรไฟล์สำเร็จ!"
+    "profile_updated": "อัปเดตโปรไฟล์สำเร็จ!",
+    "font_size": "ขนาดตัวอักษร",
+    "font_small": "เล็ก",
+    "font_normal": "ปกติ",
+    "font_large": "ใหญ่"
   },
   "confirm": {
     "logout_title": "ยืนยันการออกจากระบบ",
@@ -157,6 +163,9 @@
     "subtype": "ประเภทย่อย",
     "success": "บันทึกธุรกรรมสำเร็จ!",
     "error": "เกิดข้อผิดพลาดในการทำธุรกรรม",
-    "insufficient_holdings": "จำนวนสินทรัพย์ไม่เพียงพอสำหรับการขาย"
+    "insufficient_holdings": "จำนวนสินทรัพย์ไม่เพียงพอสำหรับการขาย",
+    "buying_power": "อำนาจการซื้อ",
+    "insufficient_cash": "ยอดเงินสดไม่เพียงพอสำหรับการซื้อ",
+    "insufficient_cash_instruction": "กรุณาไปที่ แดชบอร์ด > จัดการ > ปุ่ม + ที่อำนาจการซื้อ เพื่อเพิ่มเงินสดก่อนทำการซื้อ"
   }
 }

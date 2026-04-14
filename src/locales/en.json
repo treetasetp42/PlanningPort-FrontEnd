@@ -2,6 +2,7 @@
   "common": {
     "login": "Login",
     "logout": "Logout",
+    "update": "Update",
     "username": "Username",
     "password": "Password",
     "edit_profile": "Settings",
@@ -30,7 +31,8 @@
     "date": "Date",
     "type": "Type",
     "total": "Total",
-    "edit": "Edit"
+    "edit": "Edit",
+    "email": "Enter your Email Address"
   },
   "dashboard": {
     "title": "Portfolio Dashboard",
@@ -53,7 +55,7 @@
   },
   "login": {
     "title": "Invest Planner",
-    "subtitle": "Sign in to manage your portfolio",
+    "subtitle": "Plan Your Wealth. Build Your Future.",
     "login_success": "Login Success!",
     "login_failed": "Login Failed",
     "forgot_password_link": "Forgot Password?",
@@ -135,7 +137,11 @@
     "edit_profile_title": "Edit Profile",
     "save_changes": "Save Changes",
     "display_name": "Display Name",
-    "profile_updated": "Profile updated successfully!"
+    "profile_updated": "Profile updated successfully!",
+    "font_size": "Font Size",
+    "font_small": "Small",
+    "font_normal": "Normal",
+    "font_large": "Large"
   },
   "confirm": {
     "logout_title": "Confirm Logout",
@@ -157,6 +163,9 @@
     "subtype": "Subtype",
     "success": "Transaction Saved!",
     "error": "Error processing transaction",
-    "insufficient_holdings": "Insufficient holdings to sell."
+    "insufficient_holdings": "Insufficient holdings to sell.",
+    "buying_power": "Buying Power",
+    "insufficient_cash": "Insufficient cash to buy.",
+    "insufficient_cash_instruction": "Please go to Dashboard > Manage > + Icon on Buying Power to add more cash before buying."
   }
 }

@@ -130,9 +130,7 @@ const Login = () => {
                     </Box>
 
                     <Box sx={{ mb: 3, textAlign: 'center' }}>
-                        <Typography variant="h5" fontWeight="800" color="primary.main">
-                            {tabIndex === 0 ? t('login.title') : t('login.register_title')}
-                        </Typography>
+                        <Box component="img" src="/favicon.svg" alt="Logo" sx={{ height: 110, mb: 2, mx: 'auto', display: 'block' }} />
                         <Typography variant="body2" color="text.secondary">
                             {tabIndex === 0 ? t('login.subtitle') : t('login.register_subtitle')}
                         </Typography>

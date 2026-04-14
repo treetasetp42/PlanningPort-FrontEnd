@@ -3,6 +3,7 @@ import { createSlice } from '@reduxjs/toolkit';
 const initialState = {
     darkMode: localStorage.getItem('darkMode') === 'true',
     primaryColor: localStorage.getItem('primaryColor') || '#1976d2',
+    fontSize: localStorage.getItem('fontSize') || 'normal', // 'small' | 'normal' | 'large'
 };
 
 const themeSlice = createSlice({
@@ -17,8 +18,12 @@ const themeSlice = createSlice({
             state.primaryColor = action.payload;
             localStorage.setItem('primaryColor', action.payload);
         },
+        setFontSize: (state, action) => {
+            state.fontSize = action.payload;
+            localStorage.setItem('fontSize', action.payload);
+        },
     },
 });
 
-export const { toggleTheme, setPrimaryColor } = themeSlice.actions;
-export default themeSlice.reducer;
+export const { toggleTheme, setPrimaryColor, setFontSize } = themeSlice.actions;
+export default themeSlice.reducer;
