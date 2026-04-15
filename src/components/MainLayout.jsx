@@ -9,7 +9,8 @@ import {
     Menu as MenuIcon, Dashboard as DashboardIcon,
     Settings as SettingsIcon, Logout as LogoutIcon,
     AccountCircle, ListAlt, Brightness4, Brightness7,
-    ChevronLeft as ChevronLeftIcon
+    ChevronLeft as ChevronLeftIcon,
+    AdminPanelSettings as AdminIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -19,6 +20,10 @@ import { useTranslation } from 'react-i18next';
 import ConfirmDialog from './ConfirmDialog';
 import axiosClient from '../api/axiosClient';
 import UrlPP from '../api/UrlPP';
+import { fetchPortfolios, setActivePortfolio } from '../features/portfolioSlice';
+import PortfolioManagerModal from './PortfolioManagerModal';
+import usePermission from '../hooks/usePermission';
+import { PERMISSIONS } from '../constants/permissions';
 
 
 const drawerWidth = 240;
@@ -31,15 +36,21 @@ const MainLayout = ({ children }) => {
     const [open, setOpen] = useState(!isMobile);
     const [anchorEl, setAnchorEl] = useState(null);
     const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
+    const [portfolioMenuAnchor, setPortfolioMenuAnchor] = useState(null);
+    const [portfolioManagerOpen, setPortfolioManagerOpen] = useState(false);
     const navigate = useNavigate();
     const dispatch = useDispatch();
 
+    const { list: portfolios, activePortfolioId, loading: portfoliosLoading } = useSelector(state => state.portfolio);
+    const activePortfolio = portfolios.find(p => p.id === activePortfolioId);
+
     const [userData, setUserData] = useState({ username: '', displayName: '', avatarUrl: '' });
 
-    const getAvatarUrl = (path) => {
-        if (!path) return null;
-        if (path.startsWith('http')) return path;
-        return `${import.meta.env.VITE_API_BASE_URL}${path}`;
+    const getAvatarUrl = (url) => {
+        if (!url) return null;
+        if (url.startsWith('http')) return url;
+        const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+        return `${apiBase}${url.startsWith('/') ? '' : '/'}${url}`;
     };
 
     const changeLanguage = (lng) => {
@@ -51,12 +62,13 @@ const MainLayout = ({ children }) => {
             try {
                 const response = await axiosClient.get(UrlPP.User.Me);
                 setUserData(response.data);
+                dispatch(fetchPortfolios(response.data.userId));
             } catch (err) {
                 console.error("Failed to fetch user data in MainLayout", err);
             }
         };
         fetchUserData();
-    }, []);
+    }, [dispatch]);
 
     // Auto-close sidebar on mobile transition
     useEffect(() => {
@@ -86,19 +98,52 @@ const MainLayout = ({ children }) => {
 
     const colors = ['#1976d2', '#d32f2f', '#388e3c', '#7b1fa2', '#f57c00'];
 
-    const menuItems = [
-        { text: t('common.dashboard'), icon: <DashboardIcon />, path: '/dashboard' },
-        { text: t('common.market'), icon: <ListAlt />, path: '/market' },
-        { text: t('common.settings'), icon: <SettingsIcon />, path: '/settings' },
+    const hasAdminAccess = usePermission(PERMISSIONS.ADMIN_ACCESS);
+    const permissions = useSelector((state) => state.auth.permissions);
+
+    const allMenuItems = [
+        { text: t('common.dashboard'), icon: <DashboardIcon />, path: '/dashboard', permission: null },
+        { text: t('common.market'), icon: <ListAlt />, path: '/market', permission: PERMISSIONS.MARKET_VIEW },
+        { text: t('common.settings'), icon: <SettingsIcon />, path: '/settings', permission: null },
     ];
 
+    const menuItems = allMenuItems.filter(item =>
+        !item.permission || (Array.isArray(permissions) && permissions.includes(item.permission))
+    );
+
+
     const currentItem = menuItems.find(item => window.location.pathname === item.path);
-    const pageTitle = currentItem ? currentItem.text : 'Invest Planner';
+    const pageTitle = currentItem ? currentItem.text : (window.location.pathname.startsWith('/admin') ? 'Admin' : 'Invest Planner');
+
+    const NavItem = ({ item }) => {
+        const active = window.location.pathname === item.path || window.location.pathname.startsWith(item.path + '/');
+        return (
+            <ListItem disablePadding sx={{ mb: 0.5 }}>
+                <ListItemButton
+                    onClick={() => { navigate(item.path); if (isMobile) setOpen(false); }}
+                    sx={{
+                        borderRadius: 2,
+                        bgcolor: active ? 'primary.main' : 'transparent',
+                        color: active ? 'primary.contrastText' : 'text.secondary',
+                        '&:hover': { bgcolor: active ? 'primary.main' : 'action.hover' },
+                        '& .MuiListItemIcon-root': { color: active ? 'primary.contrastText' : 'text.secondary' }
+                    }}
+                >
+                    <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
+                    <ListItemText
+                        primary={item.text}
+                        primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: active ? 700 : 500 }}
+                    />
+                </ListItemButton>
+            </ListItem>
+        );
+    };
 
     const drawerContent = (
-        <>
+        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            {/* Logo */}
             <Toolbar sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: [1] }}>
-                <Box 
+                <Box
                     sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }}
                     onClick={() => navigate('/dashboard')}
                 >
@@ -110,41 +155,26 @@ const MainLayout = ({ children }) => {
                     </IconButton>
                 )}
             </Toolbar>
-            <Box sx={{ overflow: 'auto', py: 2 }}>
+
+            {/* Main nav — grows to fill space */}
+            <Box sx={{ overflow: 'auto', py: 2, flex: 1 }}>
                 <List sx={{ px: 1.5 }}>
-                    {menuItems.map((item) => {
-                        const active = window.location.pathname === item.path;
-                        return (
-                            <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
-                                <ListItemButton
-                                    onClick={() => {
-                                        navigate(item.path);
-                                        if (isMobile) setOpen(false);
-                                    }}
-                                    sx={{
-                                        borderRadius: 2,
-                                        bgcolor: active ? 'primary.main' : 'transparent',
-                                        color: active ? 'primary.contrastText' : 'text.secondary',
-                                        '&:hover': {
-                                            bgcolor: active ? 'primary.main' : 'action.hover',
-                                        },
-                                        '& .MuiListItemIcon-root': {
-                                            color: active ? 'primary.contrastText' : 'text.secondary',
-                                        }
-                                    }}
-                                >
-                                    <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-                                    <ListItemText
-                                        primary={item.text}
-                                        primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: active ? 700 : 500 }}
-                                    />
-                                </ListItemButton>
-                            </ListItem>
-                        );
-                    })}
+                    {menuItems.map((item) => <NavItem key={item.text} item={item} />)}
                 </List>
             </Box>
-        </>
+
+            {/* Admin Panel — pinned at bottom, only for admins */}
+            {hasAdminAccess && (
+                <Box sx={{ px: 1.5, pb: 2 }}>
+                    <Divider sx={{ mb: 1.5 }} />
+                    <NavItem item={{
+                        text: 'Admin Panel',
+                        icon: <AdminIcon />,
+                        path: '/admin'
+                    }} />
+                </Box>
+            )}
+        </Box>
     );
 
     return (
@@ -181,15 +211,91 @@ const MainLayout = ({ children }) => {
                         >
                             <MenuIcon />
                         </IconButton>
-                        <Typography
-                            variant={isMobile ? "subtitle1" : "h6"}
-                            fontWeight="800"
-                            color="text.primary"
-                            noWrap
-                        >
-                            {pageTitle}
-                        </Typography>
+                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                            <Typography
+                                variant={isMobile ? "subtitle1" : "h6"}
+                                fontWeight="800"
+                                color="text.primary"
+                                noWrap
+                                sx={{ lineHeight: 1 }}
+                            >
+                                {pageTitle}
+                            </Typography>
+                            {/* Portfolio Selector */}
+                            {!portfoliosLoading && portfolios.length > 0 ? (
+                                <Box 
+                                    onClick={(e) => setPortfolioMenuAnchor(e.currentTarget)}
+                                    sx={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        cursor: 'pointer',
+                                        mt: 0.5,
+                                        '&:hover': { opacity: 0.8 }
+                                    }}
+                                >
+                                    <Box sx={{ 
+                                        width: 10, height: 10, 
+                                        borderRadius: '50%', 
+                                        bgcolor: activePortfolio?.colorCode || 'primary.main', 
+                                        mr: 1 
+                                    }} />
+                                    <Typography variant="caption" fontWeight="700" color="text.secondary">
+                                        {activePortfolio?.name || 'Select Portfolio'}
+                                    </Typography>
+                                </Box>
+                            ) : (
+                                !portfoliosLoading && (
+                                    <Button 
+                                        size="small" 
+                                        variant="text" 
+                                        onClick={() => setPortfolioManagerOpen(true)}
+                                        sx={{ 
+                                            p: 0, minWidth: 0, textTransform: 'none', 
+                                            fontSize: '0.75rem', fontWeight: 700,
+                                            color: 'primary.main', justifyContent: 'flex-start',
+                                            mt: 0.5
+                                        }}
+                                    >
+                                        + {t('portfolio.create') || 'Create Portfolio'}
+                                    </Button>
+                                )
+                            )}
+                        </Box>
                     </Box>
+
+                    {/* Portfolio Menu Dropdown */}
+                    <Menu 
+                        anchorEl={portfolioMenuAnchor} 
+                        open={Boolean(portfolioMenuAnchor)} 
+                        onClose={() => setPortfolioMenuAnchor(null)}
+                        PaperProps={{ sx: { minWidth: 200, borderRadius: 2, mt: 1 } }}
+                    >
+                        {portfolios.map(port => (
+                            <MenuItem 
+                                key={port.id} 
+                                selected={port.id === activePortfolioId}
+                                onClick={() => {
+                                    dispatch(setActivePortfolio(port.id));
+                                    setPortfolioMenuAnchor(null);
+                                }}
+                                sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1.5 }}
+                            >
+                                <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: port.colorCode || 'primary.main' }} />
+                                <Typography variant="body2" fontWeight="700">{port.name}</Typography>
+                            </MenuItem>
+                        ))}
+                        <Divider />
+                        <MenuItem 
+                            onClick={() => {
+                                setPortfolioMenuAnchor(null);
+                                setPortfolioManagerOpen(true);
+                            }}
+                            sx={{ color: 'primary.main', py: 1.5 }}
+                        >
+                            <SettingsIcon fontSize="small" sx={{ mr: 1.5 }} />
+                            <Typography variant="body2" fontWeight="800">{t('portfolio.manage') || 'Manage Portfolios'}</Typography>
+                        </MenuItem>
+                    </Menu>
 
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0.5 : 2 }}>
                         <IconButton onClick={handleProfileMenu} sx={{ p: 0.5 }}>
@@ -244,6 +350,11 @@ const MainLayout = ({ children }) => {
                 message={t('confirm.logout_message')}
                 confirmText={t('common.logout')}
                 severity="error"
+            />
+
+            <PortfolioManagerModal 
+                open={portfolioManagerOpen}
+                onClose={() => setPortfolioManagerOpen(false)}
             />
 
             <Drawer

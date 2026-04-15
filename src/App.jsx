@@ -6,13 +6,17 @@ import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import Dashboard from './pages/Dashboard'
 import ProtectedRoute from './routes/ProtectedRoute'
+import PermissionRoute from './routes/PermissionRoute'
 import MainLayout from './components/MainLayout'
 import Market from './pages/Market'
 import Settings from './pages/Settings'
+import AdminDashboard from './pages/admin/AdminDashboard'
+import AdminRoles from './pages/admin/AdminRoles'
 import axiosClient from './api/axiosClient'
 import UrlPP from './api/UrlPP'
 import { logout } from './features/authSlice'
 import { GoogleOAuthProvider } from '@react-oauth/google'
+import { PERMISSIONS } from './constants/permissions'
 
 function App() {
   const dispatch = useDispatch();
@@ -25,7 +29,6 @@ function App() {
       try {
         await axiosClient.get(UrlPP.User.Me);
       } catch (err) {
-        // Interceptor handles 401, but we ensure state is cleared here 
         dispatch(logout());
       }
     };
@@ -40,39 +43,32 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* Protected Routes  */}
-        <Route path="/" element={
+        {/* Protected Routes */}
+        <Route path="/" element={<ProtectedRoute><MainLayout><Dashboard /></MainLayout></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><MainLayout><Dashboard /></MainLayout></ProtectedRoute>} />
+        <Route path="/market" element={<ProtectedRoute><MainLayout><Market /></MainLayout></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
+
+        {/* Admin Routes — requires ADMIN_ACCESS permission */}
+        <Route path="/admin" element={
           <ProtectedRoute>
-            <MainLayout>
-              <Dashboard />
-            </MainLayout>
+            <PermissionRoute required={PERMISSIONS.ADMIN_ACCESS}>
+              <MainLayout><AdminDashboard /></MainLayout>
+            </PermissionRoute>
           </ProtectedRoute>
         } />
-        <Route path="/dashboard" element={
+        <Route path="/admin/roles" element={
           <ProtectedRoute>
-            <MainLayout>
-              <Dashboard />
-            </MainLayout>
+            <PermissionRoute required={PERMISSIONS.ADMIN_ROLES_VIEW}>
+              <MainLayout><AdminRoles /></MainLayout>
+            </PermissionRoute>
           </ProtectedRoute>
         } />
-        <Route path="/market" element={
-          <ProtectedRoute>
-            <MainLayout>
-              <Market />
-            </MainLayout>
-          </ProtectedRoute>
-        } />
-        <Route path="/settings" element={
-          <ProtectedRoute>
-            <MainLayout>
-              <Settings />
-            </MainLayout>
-          </ProtectedRoute>
-        } />
+
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </GoogleOAuthProvider>
   )
 }
 
-export default App
+export default App

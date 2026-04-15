@@ -3,7 +3,8 @@ import {
     Dialog, DialogTitle, DialogContent, DialogActions,
     Button, TextField, Select, MenuItem, InputLabel,
     FormControl, Grid, Typography, InputAdornment, Box, Alert, AlertTitle,
-    useMediaQuery, useTheme
+    useMediaQuery, useTheme,
+    Chip
 } from '@mui/material';
 import { ShoppingCart, AccountBalanceWallet } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
@@ -23,8 +24,8 @@ const TransactionModal = ({
     const theme = useTheme();
     // xs is < 600px by default
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-    
     const userId = useSelector((state) => state.auth.user);
+    const { activePortfolioId } = useSelector((state) => state.portfolio);
     const [loading, setLoading] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [cashBalance, setCashBalance] = useState(0);
@@ -40,13 +41,16 @@ const TransactionModal = ({
     });
 
     const estimatedTotal = (parseFloat(formData.quantity) || 0) * (parseFloat(formData.pricePerUnit) || 0);
+    const estimatedProfit = formData.type === 'Sell'
+        ? ((parseFloat(formData.pricePerUnit) || 0) - (initialValues?.averageCost || 0)) * (parseFloat(formData.quantity) || 0)
+        : 0;
     const isInsufficientCash = formData.type === 'Buy' && estimatedTotal > cashBalance;
 
     const fetchCashBalance = async () => {
-        if (!userId) return;
+        if (!activePortfolioId) return;
         try {
-            const res = await axiosClient.get(UrlPP.Cash.GetBalance(userId));
-            const balance = typeof res.data === 'object' 
+            const res = await axiosClient.get(UrlPP.Cash.GetBalance(activePortfolioId));
+            const balance = typeof res.data === 'object'
                 ? (res.data.balance ?? res.data.cashBalance ?? res.data.cash ?? 0)
                 : (res.data ?? 0);
             setCashBalance(Number(balance));
@@ -69,7 +73,7 @@ const TransactionModal = ({
                 exchange: initialValues?.exchange || exchange || 'NASDAQ'
             });
         }
-    }, [open, symbol, initialPrice, initialValues, allowedTypes, exchange, userId]);
+    }, [open, symbol, initialPrice, initialValues, allowedTypes, exchange, activePortfolioId]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -100,9 +104,9 @@ const TransactionModal = ({
                 pricePerUnit: parseFloat(formData.pricePerUnit)
             };
             if (isEdit) {
-                await axiosClient.put(UrlPP.Transaction.Update(userId, symbol), payload);
+                await axiosClient.put(UrlPP.Transaction.Update(activePortfolioId, symbol), payload);
             } else {
-                await axiosClient.post(`${UrlPP.Transaction.Add}?userId=${userId}`, payload);
+                await axiosClient.post(UrlPP.Transaction.Add + `?portfolioId=${activePortfolioId}`, payload);
             }
             if (onSuccess) onSuccess();
             onClose();
@@ -117,20 +121,28 @@ const TransactionModal = ({
     return (
         <>
             <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
-                <DialogTitle sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <ShoppingCart color="primary" />
-                    {t('transaction.title', { symbol: symbol })}
+                <DialogTitle sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <ShoppingCart color="primary" />
+                        {formData.type === 'Buy' ? t('transaction.buy_title') : t('transaction.sell_title')}
+                    </Box>
+                    <Chip
+                        label={symbol}
+                        color="primary"
+                        size="small"
+                        sx={{ fontWeight: 900, px: 1, borderRadius: 1.5 }}
+                    />
                 </DialogTitle>
 
                 <form onSubmit={handleSubmit}>
                     <DialogContent dividers sx={{ p: isMobile ? 2 : 3 }}>
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-                            
+
                             {/* Row 1: Type & Quantity (6/6) */}
-                            <Box sx={{ 
-                                display: 'flex', 
-                                flexDirection: isMobile ? 'column' : 'row', 
-                                gap: 2 
+                            <Box sx={{
+                                display: 'flex',
+                                flexDirection: isMobile ? 'column' : 'row',
+                                gap: 2
                             }}>
                                 <FormControl fullWidth size="small" sx={{ flex: 1 }}>
                                     <InputLabel id="transaction-type-label">{t('transaction.type')}</InputLabel>
@@ -142,10 +154,12 @@ const TransactionModal = ({
                                         onChange={handleChange}
                                         disabled={allowedTypes.length === 1}
                                         sx={{
-                                            bgcolor: formData.type === 'Buy' ? 'success.light' : 'error.light',
-                                            color: formData.type === 'Buy' ? 'success.dark' : 'error.dark',
+                                            color: formData.type === 'Buy' ? 'success.main' : 'error.main',
                                             fontWeight: 'bold',
-                                            borderRadius: 2
+                                            borderRadius: 2,
+                                            '& .MuiSelect-select': {
+                                                color: formData.type === 'Buy' ? 'success.main' : 'error.main',
+                                            }
                                         }}
                                     >
                                         {allowedTypes.map(type => (
@@ -170,10 +184,10 @@ const TransactionModal = ({
                             </Box>
 
                             {/* Row 2: Price, Asset Type, Subtype (4/4/4) */}
-                            <Box sx={{ 
-                                display: 'flex', 
-                                flexDirection: isMobile ? 'column' : 'row', 
-                                gap: 2 
+                            <Box sx={{
+                                display: 'flex',
+                                flexDirection: isMobile ? 'column' : 'row',
+                                gap: 2
                             }}>
                                 <TextField
                                     fullWidth
@@ -226,40 +240,43 @@ const TransactionModal = ({
                                 borderColor: 'divider',
                                 mt: 1
                             }}>
-                                <Box sx={{ 
-                                    display: 'flex', 
-                                    flexDirection: isMobile ? 'column' : 'row', 
+                                <Box sx={{
+                                    display: 'flex',
+                                    flexDirection: isMobile ? 'column' : 'row',
                                     gap: isMobile ? 2 : 0,
                                     justifyContent: 'space-between'
                                 }}>
-                                    {/* Buying Power */}
-                                    <Box sx={{ 
-                                        display: 'flex', 
-                                        flexDirection: 'column', 
+                                    {/* Buying Power / Profit Info */}
+                                    <Box sx={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
                                         alignItems: isMobile ? 'center' : 'flex-start',
                                         flex: 1
                                     }}>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary', mb: 0.5 }}>
                                             <AccountBalanceWallet sx={{ fontSize: 16 }} />
                                             <Typography variant="caption" fontWeight="800" sx={{ letterSpacing: 1 }}>
-                                                {t('transaction.buying_power').toUpperCase()}
+                                                {formData.type === 'Buy' ? t('transaction.buying_power').toUpperCase() : (t('transaction.est_profit') || 'EST. PROFIT').toUpperCase()}
                                             </Typography>
                                         </Box>
-                                        <Typography variant="h5" fontWeight="900" color={isInsufficientCash ? 'error.main' : 'success.main'}>
-                                            ${cashBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        <Typography variant="h5" fontWeight="900" color={formData.type === 'Buy' ? (isInsufficientCash ? 'error.main' : 'success.main') : (estimatedProfit >= 0 ? 'success.main' : 'error.main')}>
+                                            {formData.type === 'Buy'
+                                                ? `$${cashBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+                                                : `${estimatedProfit >= 0 ? '+' : '-'}$${Math.abs(estimatedProfit).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+                                            }
                                         </Typography>
                                     </Box>
 
-                                    {/* Estimated Total */}
-                                    <Box sx={{ 
-                                        display: 'flex', 
-                                        flexDirection: 'column', 
-                                        alignItems: isMobile ? 'center' : 'flex-end', 
+                                    {/* Estimated Proceeds / Total */}
+                                    <Box sx={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: isMobile ? 'center' : 'flex-end',
                                         textAlign: isMobile ? 'center' : 'right',
                                         flex: 1
                                     }}>
                                         <Typography variant="caption" color="text.secondary" fontWeight="800" sx={{ mb: 0.5, letterSpacing: 1 }}>
-                                            {t('transaction.estimated_total').toUpperCase()}
+                                            {formData.type === 'Buy' ? t('transaction.estimated_total').toUpperCase() : (t('transaction.est_proceeds') || 'EST. PROCEEDS').toUpperCase()}
                                         </Typography>
                                         <Typography variant="h4" fontWeight="1000" color="primary">
                                             ${estimatedTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -289,17 +306,17 @@ const TransactionModal = ({
                             disabled={loading || isInsufficientCash}
                             sx={{ fontWeight: 'bold', px: 3 }}
                         >
-                            {loading ? t('common.loading') : (isEdit ? t('common.update') : t('common.confirm'))}
+                            {loading ? t('common.loading') : (formData.type === 'Buy' ? t('transaction.buy') : t('transaction.sell'))}
                         </Button>
                     </DialogActions>
                 </form>
             </Dialog>
 
-            <ConfirmDialog 
-                open={confirmOpen} 
-                onClose={() => setConfirmOpen(false)} 
-                onConfirm={handleConfirmSubmit} 
-                title={t('confirm.transaction_title')} 
+            <ConfirmDialog
+                open={confirmOpen}
+                onClose={() => setConfirmOpen(false)}
+                onConfirm={handleConfirmSubmit}
+                title={t('confirm.transaction_title')}
                 message={t('confirm.transaction_message', { type: formData.type === 'Buy' ? t('transaction.buy') : t('transaction.sell'), symbol: symbol })}
                 severity={formData.type === 'Sell' ? 'error' : 'primary'}
                 confirmText={formData.type === 'Buy' ? t('transaction.buy') : t('transaction.sell')}

@@ -63,10 +63,11 @@ const Settings = () => {
     const [notification, setNotification] = useState({ open: false, message: '', severity: 'info' });
     const colors = ['#1976d2', '#d32f2f', '#388e3c', '#7b1fa2', '#f57c00'];
 
-    const getAvatarUrl = (path) => {
-        if (!path) return null;
-        if (path.startsWith('http')) return path;
-        return `${import.meta.env.VITE_API_BASE_URL}${path}`;
+    const getAvatarUrl = (url) => {
+        if (!url) return null;
+        if (url.startsWith('http')) return url;
+        const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+        return `${apiBase}${url.startsWith('/') ? '' : '/'}${url}`;
     };
 
     const fetchUserData = async () => {

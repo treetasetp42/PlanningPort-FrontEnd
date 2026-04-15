@@ -19,6 +19,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from 'notistack';
 import ConfirmDialog from '../components/ConfirmDialog';
+import CashFlowDialog from '../components/CashFlowDialog';
 
 // ─── Helper: parse any "EXCHANGE:SYMBOL" or plain "SYMBOL" string ──────────
 const parseSymbol = (input) => {
@@ -46,10 +47,13 @@ const Market = () => {
     const [selectedItem, setSelectedItem] = useState({ symbol: '', price: '' });
     const [modalOpen, setModalOpen] = useState(false);
 
-    // Confirm Dialog State
     const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
     const [itemToRemove, setItemToRemove] = useState(null);
     const userId = useSelector((state) => state.auth.user);
+    const { activePortfolioId } = useSelector((state) => state.portfolio);
+
+    const [cashBalance, setCashBalance] = useState(0);
+    const [cashDialogOpen, setCashDialogOpen] = useState(false);
 
     // Derived: the full TradingView symbol string for the chart
     const chartSymbol = `${activeSelection.exchange}:${activeSelection.symbol}`;
@@ -64,9 +68,43 @@ const Market = () => {
         }
     };
 
+    const fetchCashBalance = async () => {
+        if (!activePortfolioId) return;
+        try {
+            const res = await axiosClient.get(UrlPP.Cash.GetBalance(activePortfolioId));
+            const balance = typeof res.data === 'object' 
+                ? (res.data.balance ?? res.data.cashBalance ?? res.data.cash ?? 0)
+                : (res.data ?? 0);
+            setCashBalance(Number(balance));
+        } catch (err) {
+            console.error("Failed to fetch balance", err);
+        }
+    };
+
+    const handleCashSubmit = async (amount, type) => {
+        try {
+            if (type === 'deposit') {
+                await axiosClient.post(UrlPP.Cash.Deposit(activePortfolioId, amount));
+                enqueueSnackbar(t('common.success'), { variant: 'success' });
+            } else if (type === 'withdraw') {
+                if (cashBalance < amount) {
+                    enqueueSnackbar(t('dashboard.insufficient_balance') || "Insufficient balance", { variant: 'error' });
+                    return;
+                }
+                await axiosClient.post(UrlPP.Cash.Withdraw(activePortfolioId, amount));
+                enqueueSnackbar(t('common.success'), { variant: 'success' });
+            }
+            setCashDialogOpen(false);
+            fetchCashBalance();
+        } catch (err) {
+            enqueueSnackbar(err.response?.data || "Operation failed", { variant: 'error' });
+        }
+    };
+
     useEffect(() => {
         if (userId) fetchWatchlist();
-    }, [userId]);
+        if (activePortfolioId) fetchCashBalance();
+    }, [userId, activePortfolioId]);
 
     // ── 2. Handle Search ─────────────────────────────────────────────────────
     const handleSearch = () => {
@@ -141,15 +179,59 @@ const Market = () => {
         setModalOpen(true);
     };
 
-    const handleTransactionSuccess = () => console.log('Transaction Success');
+    const handleTransactionSuccess = () => {
+        fetchCashBalance();
+    };
 
     return (
         <Container maxWidth="xl" sx={{ mt: { xs: 1, md: 2 } }}>
-            {/* ── Page Title ── */}
-            <Box sx={{ mb: { xs: 2, md: 3 } }}>
+            {/* ── Page Title & Buying Power ── */}
+            <Box sx={{ 
+                mb: { xs: 2, md: 3 }, 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 2
+            }}>
                 <Typography variant={isMobile ? 'h5' : 'h4'} fontWeight="800">
                     {t('common.market')}
                 </Typography>
+
+                <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 2,
+                    bgcolor: 'action.hover',
+                    px: { xs: 1.5, md: 2 },
+                    py: 1,
+                    borderRadius: 3,
+                    border: '1px solid',
+                    borderColor: 'divider'
+                }}>
+                    <Box>
+                        <Typography variant="caption" fontWeight="800" color="text.secondary" sx={{ letterSpacing: 0.5, display: 'block', lineHeight: 1, mb: 0.5 }}>
+                            {t('dashboard.buying_power').toUpperCase()}
+                        </Typography>
+                        <Typography variant="h6" fontWeight="900" color="primary.main" sx={{ lineHeight: 1 }}>
+                            ${cashBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </Typography>
+                    </Box>
+                    <Button 
+                        size="small" 
+                        variant="contained" 
+                        onClick={() => setCashDialogOpen(true)}
+                        sx={{ 
+                            borderRadius: 2, 
+                            fontWeight: 800, 
+                            textTransform: 'none',
+                            boxShadow: 'none',
+                            '&:hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }
+                        }}
+                    >
+                        {t('common.manage') || 'Manage'}
+                    </Button>
+                </Box>
             </Box>
 
             {/* ── Premium Symbol Header ── */}
@@ -361,6 +443,12 @@ const Market = () => {
                     onSuccess={handleTransactionSuccess}
                 />
             )}
+            <CashFlowDialog
+                open={cashDialogOpen}
+                onClose={() => setCashDialogOpen(false)}
+                onSubmit={handleCashSubmit}
+                currentBalance={cashBalance}
+            />
         </Container>
     );
 };

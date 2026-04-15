@@ -21,6 +21,7 @@ const Dashboard = () => {
     const [isEditMode, setIsEditMode] = useState(false);
     const [selectedAsset, setSelectedAsset] = useState(null);
     const [modalOpen, setModalOpen] = useState(false);
+    const [modalType, setModalType] = useState('Buy');
 
     // UI Dialogs State
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -31,14 +32,15 @@ const Dashboard = () => {
     const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
 
     const userId = useSelector((state) => state.auth.user);
+    const { activePortfolioId } = useSelector((state) => state.portfolio);
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
     const fetchDashboard = async () => {
-        if (!userId) return;
+        if (!activePortfolioId) return;
         try {
             setLoading(true);
-            const res = await axiosClient.get(UrlPP.Transaction.Dashboard(userId));
+            const res = await axiosClient.get(UrlPP.Transaction.Dashboard(activePortfolioId));
             setData(res.data);
         } catch (err) {
             console.error("Fetch error", err);
@@ -49,7 +51,7 @@ const Dashboard = () => {
 
     useEffect(() => {
         fetchDashboard();
-    }, [userId]);
+    }, [activePortfolioId]);
 
     const handleDeleteRequest = (symbol) => {
         setSymbolToDelete(symbol);
@@ -58,7 +60,7 @@ const Dashboard = () => {
 
     const handleConfirmDelete = async () => {
         try {
-            await axiosClient.delete(UrlPP.Transaction.Delete(userId, symbolToDelete));
+            await axiosClient.delete(UrlPP.Transaction.Delete(activePortfolioId, symbolToDelete));
             enqueueSnackbar(t('common.success'), { variant: 'success' });
             fetchDashboard();
         } catch (err) {
@@ -72,18 +74,18 @@ const Dashboard = () => {
         setCashDialogOpen(true);
     };
 
-    const handleCashSubmit = async (amount) => {
+    const handleCashSubmit = async (amount, type) => {
         try {
-            if (cashDialogType === 'deposit') {
-                await axiosClient.post(UrlPP.Cash.Deposit(userId, amount));
+            if (type === 'deposit') {
+                await axiosClient.post(UrlPP.Cash.Deposit(activePortfolioId, amount));
                 enqueueSnackbar(t('common.success'), { variant: 'success' });
-            } else {
+            } else if (type === 'withdraw') {
                 // Check balance locally first for better UX
                 if (data?.cashBalance < amount) {
                     enqueueSnackbar(t('dashboard.insufficient_balance') || "Insufficient balance", { variant: 'error' });
                     return;
                 }
-                await axiosClient.post(UrlPP.Cash.Withdraw(userId, amount));
+                await axiosClient.post(UrlPP.Cash.Withdraw(activePortfolioId, amount));
                 enqueueSnackbar(t('common.success'), { variant: 'success' });
             }
             setCashDialogOpen(false);
@@ -93,8 +95,9 @@ const Dashboard = () => {
         }
     };
 
-    const handleEdit = (asset) => {
+    const handleTrade = (asset, type = 'Buy') => {
         setSelectedAsset(asset);
+        setModalType(type);
         setModalOpen(true);
     };
 
@@ -113,29 +116,36 @@ const Dashboard = () => {
             subtitle: "Realized Profit",
             subValue: `${(data?.realizedProfit || 0) >= 0 ? '+' : '-'}$${Math.abs(data?.realizedProfit || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
             subValueColor: (data?.realizedProfit || 0) >= 0 ? 'success.main' : 'error.main',
-            actions: isEditMode && (
-                <>
-                    <IconButton
-                        size="medium"
-                        onClick={() => handleOpenCashDialog('deposit')}
-                        sx={{ bgcolor: 'action.hover', color: 'primary.main', width: 40, height: 40 }}
-                    >
-                        <AddCircle sx={{ fontSize: 24 }} />
-                    </IconButton>
-                    <IconButton
-                        size="medium"
-                        onClick={() => handleOpenCashDialog('withdraw')}
-                        sx={{ bgcolor: 'action.hover', color: 'error.main', width: 40, height: 40 }}
-                    >
-                        <RemoveCircle sx={{ fontSize: 24 }} />
-                    </IconButton>
-                </>
+            actions: (
+                <MuiButton
+                    size="small"
+                    variant="outlined"
+                    onClick={() => handleOpenCashDialog('deposit')}
+                    sx={{
+                        borderRadius: 2, textTransform: 'none', fontWeight: 800,
+                        borderColor: 'divider', color: 'text.secondary',
+                        '&:hover': { bgcolor: 'action.hover', borderColor: 'primary.main', color: 'primary.main' }
+                    }}
+                >
+                    {t('common.manage') || 'Manage'}
+                </MuiButton>
             )
         }
     ];
 
+    if (!activePortfolioId) {
+        return (
+            <Container maxWidth="xl" disableGutters sx={{ mt: { xs: 1, md: 2 }, textAlign: 'center' }}>
+                <Typography variant="h6" color="text.secondary" sx={{ mt: 10 }}>
+                    Please select or create a portfolio to view your dashboard.
+                </Typography>
+            </Container>
+        );
+    }
+
     if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}><CircularProgress /></Box>;
 
+    // Add activePortfolio check mapping...
     return (
         <Container
             maxWidth="xl"
@@ -225,23 +235,54 @@ const Dashboard = () => {
                                             <Box sx={{ display: 'flex', gap: 1 }}>
                                                 <IconButton
                                                     size="medium"
-                                                    onClick={() => handleEdit(asset)}
-                                                    sx={{ bgcolor: 'action.hover', color: 'primary.main', width: 40, height: 40 }}
+                                                    onClick={() => handleTrade(asset, 'Sell')}
+                                                    sx={{
+                                                        bgcolor: 'error.main',
+                                                        color: 'white',
+                                                        width: 34, height: 34,
+                                                        borderRadius: 2,
+                                                        '&:hover': { bgcolor: 'primary.dark' }
+                                                    }}
+                                                    title={t('transaction.sell') || 'Sell'}
                                                 >
-                                                    <Edit sx={{ fontSize: 20 }} />
+                                                    <RemoveCircle sx={{ fontSize: 18 }} />
                                                 </IconButton>
                                                 <IconButton
                                                     size="medium"
                                                     onClick={() => handleDeleteRequest(asset.symbol)}
-                                                    sx={{ bgcolor: 'error.light', color: 'error.main', width: 40, height: 40 }}
+                                                    sx={{
+                                                        bgcolor: 'transparent',
+                                                        color: 'error.main',
+                                                        width: 34, height: 34,
+                                                        borderRadius: 2,
+                                                        border: '1px solid transparent',
+                                                        '&:hover': { bgcolor: 'error.light', borderColor: 'error.main' }
+                                                    }}
+                                                    title={t('common.delete') || 'Delete'}
                                                 >
-                                                    <Delete sx={{ fontSize: 20 }} />
+                                                    <Delete sx={{ fontSize: 18 }} />
                                                 </IconButton>
                                             </Box>
                                         )}
                                         {!isEditMode && (
-                                            <Box sx={{ p: 1, bgcolor: 'action.hover', borderRadius: 2, display: 'flex', width: 38, height: 38, justifyContent: 'center', alignItems: 'center' }}>
-                                                {getIcon(asset.subtype)}
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={() => handleTrade(asset, 'Buy')}
+                                                    sx={{
+                                                        bgcolor: 'primary.main',
+                                                        color: 'white',
+                                                        width: 34, height: 34,
+                                                        borderRadius: 2,
+                                                        '&:hover': { bgcolor: 'primary.dark' }
+                                                    }}
+                                                    title={t('transaction.buy') || 'Buy'}
+                                                >
+                                                    <AddCircle sx={{ fontSize: 18 }} />
+                                                </IconButton>
+                                                <Box sx={{ p: 1, bgcolor: 'action.hover', borderRadius: 2, display: 'flex', width: 34, height: 34, justifyContent: 'center', alignItems: 'center' }}>
+                                                    {getIcon(asset.subtype)}
+                                                </Box>
                                             </Box>
                                         )}
                                     </Box>
@@ -307,7 +348,7 @@ const Dashboard = () => {
             <TransactionHistoryDialog
                 open={historyDialogOpen}
                 onClose={() => setHistoryDialogOpen(false)}
-                userId={userId}
+                portfolioId={activePortfolioId}
             />
 
             {/* Modal สำหรับแก้ไขธุรกรรม  */}
@@ -316,10 +357,10 @@ const Dashboard = () => {
                     open={modalOpen}
                     onClose={() => { setModalOpen(false); setSelectedAsset(null); }}
                     symbol={selectedAsset.symbol}
-                    initialPrice={selectedAsset.averageCost}
+                    initialPrice={selectedAsset.currentPrice}
                     initialValues={selectedAsset}
-                    isEdit={true}
-                    allowedTypes={['Buy', 'Sell']}
+                    isEdit={false} // Disable edit mode for these quick actions
+                    allowedTypes={[modalType]} // Lock to selected type
                     maxHoldings={selectedAsset.holdings}
                     onSuccess={() => {
                         fetchDashboard();

@@ -8,7 +8,7 @@ import axiosClient from '../api/axiosClient';
 import { UrlPP } from '../api/UrlPP';
 import { useTranslation } from 'react-i18next';
 
-const TransactionHistoryDialog = ({ open, onClose, userId }) => {
+const TransactionHistoryDialog = ({ open, onClose, portfolioId }) => {
     const { t } = useTranslation();
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -16,15 +16,15 @@ const TransactionHistoryDialog = ({ open, onClose, userId }) => {
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     useEffect(() => {
-        if (open && userId) {
+        if (open && portfolioId) {
             fetchHistory();
         }
-    }, [open, userId]);
+    }, [open, portfolioId]);
 
     const fetchHistory = async () => {
         setLoading(true);
         try {
-            const res = await axiosClient.get(UrlPP.Transaction.History(userId));
+            const res = await axiosClient.get(UrlPP.Transaction.History(portfolioId));
             setHistory(res.data);
         } catch (err) {
             console.error("Failed to fetch history", err);

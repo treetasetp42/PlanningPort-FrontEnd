@@ -166,6 +166,28 @@
     "insufficient_holdings": "Insufficient holdings to sell.",
     "buying_power": "Buying Power",
     "insufficient_cash": "Insufficient cash to buy.",
-    "insufficient_cash_instruction": "Please go to Dashboard > Manage > + Icon on Buying Power to add more cash before buying."
+    "insufficient_cash_instruction": "Please go to Dashboard > Manage to navigate and add more Buying Power in your pocket before buying.",
+    "buy_title": "Buy Stock",
+    "sell_title": "Sell Stock",
+    "buy_success": "Buy Stock Success!",
+    "sell_success": "Sell Stock Success!",
+    "buy_error": "Buy Stock Error",
+    "sell_error": "Sell Stock Error"
+  },
+  "portfolio": {
+    "title": "Portfolios",
+    "manage": "Manage Portfolios",
+    "create": "Create Portfolio",
+    "edit": "Edit Portfolio",
+    "delete": "Delete Portfolio",
+    "name": "Portfolio Name",
+    "description": "Description (Optional)",
+    "color": "Theme Color",
+    "confirm_delete": "Are you sure you want to delete this portfolio?",
+    "delete_warning": "All transactions and cash data linked to this portfolio will be permanently lost!",
+    "success_create": "Portfolio Created",
+    "success_update": "Portfolio Updated",
+    "success_delete": "Portfolio Deleted",
+    "limit_reached": "You have reached the limit of 10 portfolios."
   }
 }
