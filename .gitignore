@@ -31,3 +31,5 @@ dist-ssr/
 
 # TypeScript [cite: 2026-04-02]
 *.tsbuildinfo
+.vercel
+.env*.local
