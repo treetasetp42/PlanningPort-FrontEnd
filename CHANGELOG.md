@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.4.0] - 2026-04-26
+## [1.0.0] - 2026-04-26
 ### Added
 - Created `vercel.json` for SPA routing fixes to handle direct URL navigation on Vercel.
 - Detailed professional README.md with bilingual support.
