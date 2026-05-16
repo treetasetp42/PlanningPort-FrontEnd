@@ -19,6 +19,7 @@ export const UrlPP = {
         ResetPassword: '/User/reset-password',
         RequestDelete: '/User/request-delete',
         CancelDelete: '/User/cancel-delete',
+        Health: '/Health',
     },
     Transaction: {
         Dashboard: (portfolioId) => `/Transaction/dashboard/${portfolioId}`,
