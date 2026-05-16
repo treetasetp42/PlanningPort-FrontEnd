@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { useEffect } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
+import { useEffect, useState } from 'react'
+import { useDispatch } from 'react-redux'
 import Login from './pages/Login'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
@@ -14,26 +14,49 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminRoles from './pages/admin/AdminRoles'
 import axiosClient from './api/axiosClient'
 import UrlPP from './api/UrlPP'
-import { logout } from './features/authSlice'
+import { logout, loginSuccess } from './features/authSlice'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { PERMISSIONS } from './constants/permissions'
+import FullScreenLoader from './components/FullScreenLoader'
 
 function App() {
   const dispatch = useDispatch();
-  const token = useSelector((state) => state.auth.token);
+  const [isAppReady, setIsAppReady] = useState(false);
   const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
   useEffect(() => {
-    const validateToken = async () => {
-      if (!token) return;
-      try {
-        await axiosClient.get(UrlPP.User.Me);
-      } catch (err) {
-        dispatch(logout());
+    const initializeApp = async () => {
+      const storedToken = localStorage.getItem('token');
+      const storedRefreshToken = localStorage.getItem('refreshToken');
+
+      if (storedToken) {
+        try {
+          const response = await axiosClient.get(UrlPP.User.Me);
+          dispatch(loginSuccess({
+            accessToken: storedToken,
+            refreshToken: storedRefreshToken,
+            userId: response.data.userId,
+            permissions: response.data.permissions,
+            roleName: response.data.roleName
+          }));
+        } catch (err) {
+          dispatch(logout());
+        }
+      } else {
+        if (!sessionStorage.getItem('isWarmedUp')) {
+          axiosClient.get(UrlPP.User.Health).catch(() => { });
+          sessionStorage.setItem('isWarmedUp', 'true');
+        }
       }
+      setIsAppReady(true);
     };
-    validateToken();
-  }, [token, dispatch]);
+
+    initializeApp();
+  }, [dispatch]);
+
+  if (!isAppReady) {
+    return <FullScreenLoader />;
+  }
 
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
@@ -71,4 +94,4 @@ function App() {
   )
 }
 
-export default App
+export default App

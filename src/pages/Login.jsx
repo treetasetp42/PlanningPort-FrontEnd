@@ -20,7 +20,10 @@ const Login = () => {
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [tabIndex, setTabIndex] = useState(0);
     const [credentials, setCredentials] = useState({ remoteUser: '', remotePassword: '', email: '' });
+    const [isLoading, setIsLoading] = useState(false);
+    const [loadingMessage, setLoadingMessage] = useState('');
     const [linkDialog, setLinkDialog] = useState({ open: false, email: '', credential: '' });
+
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const location = useLocation();
@@ -43,6 +46,16 @@ const Login = () => {
 
     const handleLogin = async (e) => {
         e.preventDefault();
+        setIsLoading(true);
+        setLoadingMessage(tabIndex === 0 ? t('common.login') : t('login.register_button'));
+
+        // REQUIREMENT 3: Cold Start Mitigation UX
+        // If the backend is cold, the request might take 15-20s. 
+        // We show a reassuring message after 3 seconds of waiting.
+        const coldStartTimer = setTimeout(() => {
+            setLoadingMessage(t('login.cold_start_warning', { defaultValue: 'Connecting to secure server... Please wait' }));
+        }, 3000);
+
         if (tabIndex === 0) {
             // LOGIN
             try {
@@ -55,6 +68,9 @@ const Login = () => {
                 navigate('/dashboard');
             } catch (error) {
                 enqueueSnackbar(t('login.login_failed') + ': ' + (error.response?.data || ''), { variant: 'error' });
+            } finally {
+                clearTimeout(coldStartTimer);
+                setIsLoading(false);
             }
         } else {
             // REGISTER
@@ -65,11 +81,21 @@ const Login = () => {
                 setCredentials({ ...credentials, remotePassword: '' });
             } catch (error) {
                 enqueueSnackbar(t('login.register_failed') + ': ' + (error.response?.data || ''), { variant: 'error' });
+            } finally {
+                clearTimeout(coldStartTimer);
+                setIsLoading(false);
             }
         }
     };
 
     const handleGoogleSuccess = async (credentialResponse) => {
+        setIsLoading(true);
+        setLoadingMessage(t('common.login'));
+
+        const coldStartTimer = setTimeout(() => {
+            setLoadingMessage(t('login.cold_start_warning', { defaultValue: 'Connecting to secure server... Please wait' }));
+        }, 3000);
+
         try {
             const response = await axiosClient.post(UrlPP.User.GoogleLogin, {
                 credential: credentialResponse.credential
@@ -79,7 +105,6 @@ const Login = () => {
             navigate('/dashboard');
         } catch (error) {
             if (error.response?.status === 409 && error.response?.data?.requiresLinking) {
-                // Open confirmation dialog instead of failing
                 setLinkDialog({
                     open: true,
                     email: error.response.data.email,
@@ -88,10 +113,14 @@ const Login = () => {
             } else {
                 enqueueSnackbar(t('login.login_failed') + ': ' + (error.response?.data || ''), { variant: 'error' });
             }
+        } finally {
+            clearTimeout(coldStartTimer);
+            setIsLoading(false);
         }
     };
 
     const handleConfirmLink = async () => {
+        setIsLoading(true);
         try {
             const response = await axiosClient.post(UrlPP.User.ConfirmGoogleLink, {
                 credential: linkDialog.credential
@@ -103,6 +132,8 @@ const Login = () => {
         } catch (error) {
             enqueueSnackbar(t('login.link_failed') + ': ' + (error.response?.data || ''), { variant: 'error' });
             setLinkDialog({ open: false, email: '', credential: '' });
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -143,6 +174,7 @@ const Login = () => {
                             label={t('common.username')}
                             margin="normal"
                             variant="outlined"
+                            disabled={isLoading}
                             value={credentials.remoteUser}
                             onChange={(e) => setCredentials({ ...credentials, remoteUser: e.target.value })}
                         />
@@ -153,6 +185,7 @@ const Login = () => {
                                 type="email"
                                 margin="normal"
                                 variant="outlined"
+                                disabled={isLoading}
                                 value={credentials.email}
                                 onChange={(e) => setCredentials({ ...credentials, email: e.target.value })}
                             />
@@ -164,6 +197,7 @@ const Login = () => {
                             type="password"
                             margin="normal"
                             variant="outlined"
+                            disabled={isLoading}
                             value={credentials.remotePassword}
                             onChange={(e) => setCredentials({ ...credentials, remotePassword: e.target.value })}
                         />
@@ -171,9 +205,10 @@ const Login = () => {
                             fullWidth
                             type="submit"
                             variant="contained"
+                            disabled={isLoading}
                             sx={{ mt: 4, py: 1.5, borderRadius: 2, fontWeight: 700 }}
                         >
-                            {tabIndex === 0 ? t('common.login') : t('login.register_button')}
+                            {isLoading ? loadingMessage : (tabIndex === 0 ? t('common.login') : t('login.register_button'))}
                         </Button>
 
                         {tabIndex === 0 && (
@@ -181,6 +216,7 @@ const Login = () => {
                                 <Button
                                     variant="text"
                                     size="small"
+                                    disabled={isLoading}
                                     onClick={() => navigate('/forgot-password')}
                                     sx={{ fontWeight: 600, textTransform: 'none' }}
                                 >
@@ -204,12 +240,13 @@ const Login = () => {
                             theme="filled_blue"
                             shape="pill"
                             text={tabIndex === 0 ? 'signin_with' : 'signup_with'}
+                            disabled={isLoading}
                         />
                     </Box>
                 </Paper>
             </Box>
 
-            <Dialog open={linkDialog.open} onClose={() => setLinkDialog({ open: false, email: '', credential: '' })}>
+            <Dialog open={linkDialog.open} onClose={() => !isLoading && setLinkDialog({ open: false, email: '', credential: '' })}>
                 <DialogTitle fontWeight={800}>{t('login.link_confirm_title')}</DialogTitle>
                 <DialogContent>
                     <Typography>
@@ -220,11 +257,11 @@ const Login = () => {
                     </Typography>
                 </DialogContent>
                 <DialogActions sx={{ p: 2 }}>
-                    <Button onClick={() => setLinkDialog({ open: false, email: '', credential: '' })} color="inherit">
+                    <Button onClick={() => setLinkDialog({ open: false, email: '', credential: '' })} color="inherit" disabled={isLoading}>
                         {t('common.cancel')}
                     </Button>
-                    <Button variant="contained" onClick={handleConfirmLink}>
-                        {t('login.link_account')}
+                    <Button variant="contained" onClick={handleConfirmLink} disabled={isLoading}>
+                        {isLoading ? loadingMessage : t('login.link_account')}
                     </Button>
                 </DialogActions>
             </Dialog>

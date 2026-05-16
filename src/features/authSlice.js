@@ -9,12 +9,13 @@ const parsePermissions = () => {
 };
 
 const initialState = {
-    user: localStorage.getItem('userId') || null,
+    user: null, // Set to null instead of mockup or localStorage
     token: localStorage.getItem('token') || null,
     refreshToken: localStorage.getItem('refreshToken') || null,
-    isAuthenticated: !!localStorage.getItem('token'),
-    permissions: parsePermissions(),
-    roleName: localStorage.getItem('roleName') || null,
+    isAuthenticated: false, // Start as false until validated
+    permissions: [],
+    roleName: null,
+    loading: false, // Added to track auth actions
 };
 
 const authSlice = createSlice({
