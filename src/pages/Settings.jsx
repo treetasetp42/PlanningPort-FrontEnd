@@ -15,13 +15,15 @@ import {
     IconButton,
     InputAdornment,
     Snackbar,
-    Alert
+    Alert,
+    Checkbox,
+    Link
 } from '@mui/material';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { toggleTheme, setPrimaryColor, setFontSize } from '../features/themeSlice';
-import { logout } from '../features/authSlice';
+import { logout, loginSuccess, loginGuest } from '../features/authSlice';
 import axiosClient from '../api/axiosClient';
 import UrlPP from '../api/UrlPP';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -36,6 +38,22 @@ const Settings = () => {
     const primaryColor = useSelector((state) => state.theme.primaryColor);
     const fontSize = useSelector((state) => state.theme.fontSize);
     const userId = useSelector((state) => state.auth.user);
+    const isGuest = useSelector((state) => state.auth.isGuest);
+
+    const [isGuestRegisterOpen, setIsGuestRegisterOpen] = useState(false);
+    const [isMigrating, setIsMigrating] = useState(false);
+    const [guestCredentials, setGuestCredentials] = useState({ username: '', password: '', confirmPassword: '', email: '' });
+    const [guestConsentChecked, setGuestConsentChecked] = useState(false);
+    const [consentDialogOpen, setConsentDialogOpen] = useState({ open: false, viewOnly: false });
+
+    const gPassword = guestCredentials.password || '';
+    const gIsMinLength = gPassword.length >= 8;
+    const gHasLowercase = /[a-z]/.test(gPassword);
+    const gHasUppercase = /[A-Z]/.test(gPassword);
+    const gHasNumber = /[0-9]/.test(gPassword);
+    const gHasSpecial = /[^A-Za-z0-9]/.test(gPassword);
+    const gIsPasswordValid = gIsMinLength && gHasLowercase && gHasUppercase && gHasNumber && gHasSpecial;
+    const gPasswordsMatch = gPassword !== '' && gPassword === guestCredentials.confirmPassword;
 
     const [userData, setUserData] = useState({ username: '', displayName: '', avatarUrl: '' });
     const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
@@ -59,6 +77,15 @@ const Settings = () => {
         newPassword: '',
         confirmNewPassword: ''
     });
+
+    const newPassword = passwordData.newPassword || '';
+    const isMinLength = newPassword.length >= 8;
+    const hasLowercase = /[a-z]/.test(newPassword);
+    const hasUppercase = /[A-Z]/.test(newPassword);
+    const hasNumber = /[0-9]/.test(newPassword);
+    const hasSpecial = /[^A-Za-z0-9]/.test(newPassword);
+    const isPasswordValid = isMinLength && hasLowercase && hasUppercase && hasNumber && hasSpecial;
+    const passwordsMatch = newPassword !== '' && newPassword === passwordData.confirmNewPassword;
 
     const [notification, setNotification] = useState({ open: false, message: '', severity: 'info' });
     const colors = ['#1976d2', '#d32f2f', '#388e3c', '#7b1fa2', '#f57c00'];
@@ -175,7 +202,12 @@ const Settings = () => {
     };
     const handleUpdatePassword = async () => {
         if (passwordData.newPassword !== passwordData.confirmNewPassword) {
-            setNotification({ open: true, message: 'New passwords do not match', severity: 'error' });
+            setNotification({ open: true, message: t('login.password_mismatch'), severity: 'error' });
+            return;
+        }
+
+        if (!isPasswordValid) {
+            setNotification({ open: true, message: 'Password does not meet security requirements', severity: 'error' });
             return;
         }
 
@@ -241,6 +273,161 @@ const Settings = () => {
         }
     };
 
+    const handleMigrateGuestData = async (newUserId, accessToken) => {
+        try {
+            const guestPortfolios = JSON.parse(localStorage.getItem('guest_portfolios') || '[]');
+
+            // Loop through guest portfolios and migrate to backend!
+            for (const guestPort of guestPortfolios) {
+                // 1. Create portfolio on backend
+                const newPortResponse = await axiosClient.post(UrlPP.Portfolio.Add(newUserId), {
+                    name: guestPort.name,
+                    description: guestPort.description,
+                    colorCode: guestPort.colorCode
+                });
+
+                const newPortId = newPortResponse.data.id;
+
+                // Calculate the initial cash balance needed so that after sequential transaction execution,
+                // the backend cash balance reconciles to the exact local guestCash.
+                const guestCash = parseFloat(localStorage.getItem(`guest_cash_${guestPort.id}`) || '10000.00');
+                const guestTxs = JSON.parse(localStorage.getItem(`guest_transactions_${guestPort.id}`) || '[]');
+
+                let initialCash = guestCash;
+                for (const tx of guestTxs) {
+                    const txCost = tx.quantity * tx.pricePerUnit;
+                    if (tx.type === 'Buy') {
+                        initialCash += txCost; // Add back the spent cash
+                    } else if (tx.type === 'Sell') {
+                        initialCash -= txCost; // Subtract the earned cash
+                    }
+                }
+                initialCash = Math.max(0, initialCash);
+
+                // 2. Deposit the computed initial cash balance
+                if (initialCash > 0) {
+                    await axiosClient.post(UrlPP.Cash.Deposit(newPortId, initialCash.toFixed(2)));
+                }
+
+                // 3. Migrate all Transactions
+                for (const tx of guestTxs) {
+                    await axiosClient.post(`/Transaction/add?portfolioId=${newPortId}`, {
+                        symbol: tx.symbol,
+                        type: tx.type,
+                        quantity: tx.quantity,
+                        pricePerUnit: tx.pricePerUnit,
+                        assetType: tx.assetType,
+                        subtype: tx.subtype,
+                        exchange: tx.exchange
+                    });
+                }
+            }
+
+            // Clean up guest local storage keys
+            localStorage.removeItem('guest_portfolios');
+            guestPortfolios.forEach(p => {
+                localStorage.removeItem(`guest_cash_${p.id}`);
+                localStorage.removeItem(`guest_transactions_${p.id}`);
+            });
+            localStorage.removeItem('isGuest');
+
+            setNotification({ open: true, message: t('settings.guest_register_success'), severity: 'success' });
+
+            // Dispatch login success to transition UI
+            dispatch(loginSuccess({
+                accessToken,
+                refreshToken: localStorage.getItem('refreshToken'),
+                userId: newUserId,
+                permissions: [
+                    "PORTFOLIO_VIEW",
+                    "PORTFOLIO_CREATE",
+                    "PORTFOLIO_DELETE",
+                    "MARKET_VIEW",
+                    "MARKET_TRADE"
+                ],
+                roleName: "Member"
+            }));
+
+            // Refresh screen to fetch the official backend profile
+            navigate('/');
+            window.location.reload();
+        } catch (err) {
+            console.error("Migration error", err);
+            setNotification({ open: true, message: "Failed to sync some guest portfolios", severity: 'warning' });
+        } finally {
+            setIsMigrating(false);
+        }
+    };
+
+    const handleGuestRegisterSubmit = async (e) => {
+        e.preventDefault();
+        if (!guestCredentials.email || !guestCredentials.email.trim()) {
+            setNotification({ open: true, message: t('login.please_enter_email'), severity: 'error' });
+            return;
+        }
+        if (!gIsPasswordValid || !gPasswordsMatch || !guestConsentChecked) {
+            setNotification({ open: true, message: 'Please complete all validations and agree to terms', severity: 'error' });
+            return;
+        }
+
+        setIsMigrating(true);
+        try {
+            // 1. Register account on backend
+            await axiosClient.post(UrlPP.User.Register, {
+                remoteUser: guestCredentials.username,
+                remotePassword: guestCredentials.password,
+                email: guestCredentials.email
+            });
+
+            // 2. Automatically log in to get credentials
+            const loginResponse = await axiosClient.post(UrlPP.User.Login, {
+                remoteUser: guestCredentials.username,
+                remotePassword: guestCredentials.password
+            });
+
+            const { accessToken, refreshToken, userId } = loginResponse.data;
+
+            // 3. Temporarily set token in localStorage and clear guest flag so network requests go through!
+            localStorage.setItem('token', accessToken);
+            localStorage.setItem('refreshToken', refreshToken);
+            localStorage.setItem('userId', userId);
+            localStorage.removeItem('isGuest');
+
+            // 4. Run data migration!
+            await handleMigrateGuestData(userId, accessToken);
+
+            setIsGuestRegisterOpen(false);
+        } catch (error) {
+            setNotification({ open: true, message: 'Registration failed: ' + (error.response?.data || ''), severity: 'error' });
+            setIsMigrating(false);
+        }
+    };
+
+    const handleGuestGoogleSuccess = async (credentialResponse) => {
+        setIsMigrating(true);
+        try {
+            // Send to Google Login / link endpoint to register or login using Google
+            const response = await axiosClient.post(UrlPP.User.GoogleLogin, {
+                credential: credentialResponse.credential
+            });
+
+            const { accessToken, refreshToken, userId } = response.data;
+
+            // Set session credentials
+            localStorage.setItem('token', accessToken);
+            localStorage.setItem('refreshToken', refreshToken);
+            localStorage.setItem('userId', userId);
+            localStorage.removeItem('isGuest');
+
+            // Migrate
+            await handleMigrateGuestData(userId, accessToken);
+        } catch (err) {
+            console.error(err);
+            setNotification({ open: true, message: 'Google link failed: ' + (err.response?.data || ''), severity: 'error' });
+            setIsMigrating(false);
+        }
+    };
+
     const handleLogout = () => {
         dispatch(logout());
         navigate('/login');
@@ -277,19 +464,62 @@ const Settings = () => {
                         {userData.displayName || userData.username || 'Loading...'}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                        {userData.role || 'Member'} — {userData.email}
+                        {userData.roleName || 'Member'} — {userData.email || '@' + userData.username}
                     </Typography>
-                    <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<Edit />}
-                        onClick={() => setEditProfileOpen(true)}
-                        sx={{ borderRadius: 4, fontWeight: 700, mt: 1.5, textTransform: 'none' }}
-                    >
-                        {t('common.edit')}
-                    </Button>
+                    {!isGuest && (
+                        <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<Edit />}
+                            onClick={() => setEditProfileOpen(true)}
+                            sx={{ borderRadius: 4, fontWeight: 700, mt: 1.5, textTransform: 'none' }}
+                        >
+                            {t('common.edit')}
+                        </Button>
+                    )}
                 </Box>
             </Paper>
+
+            {isGuest && (
+                <Paper elevation={0} sx={{
+                    p: 3, mb: 3, borderRadius: 4,
+                    border: '1px dashed',
+                    borderColor: 'primary.main',
+                    background: (theme) => theme.palette.mode === 'dark'
+                        ? 'linear-gradient(135deg, rgba(108,93,211,0.15) 0%, rgba(108,93,211,0.05) 100%)'
+                        : 'linear-gradient(135deg, rgba(108,93,211,0.08) 0%, rgba(108,93,211,0.02) 100%)',
+                    boxShadow: `0 8px 32px ${theme.palette.primary.main}11`
+                }}>
+                    <Typography variant="h6" fontWeight="800" color="primary" sx={{ mb: 1 }}>
+                        ✨ {t('settings.guest_banner_title')}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3, lineHeight: 1.6 }}>
+                        {t('settings.guest_banner_body')}
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <Button
+                            variant="contained"
+                            disabled={isMigrating}
+                            onClick={() => setIsGuestRegisterOpen(true)}
+                            sx={{ borderRadius: 2, fontWeight: 700, textTransform: 'none' }}
+                        >
+                            {isMigrating ? t('common.loading') : t('settings.guest_register_sync')}
+                        </Button>
+                        <Box sx={{ display: 'inline-block' }}>
+                            <GoogleLogin
+                                onSuccess={handleGuestGoogleSuccess}
+                                onError={() => setNotification({ open: true, message: 'Google link failed', severity: 'error' })}
+                                useOneTap={false}
+                                theme="filled_blue"
+                                text="continue_with"
+                                type="standard"
+                                shape="pill"
+                                disabled={isMigrating}
+                            />
+                        </Box>
+                    </Box>
+                </Paper>
+            )}
 
             {/* Settings Box (Row layout) */}
             <Paper elevation={0} sx={{
@@ -353,19 +583,19 @@ const Settings = () => {
                         />
                         <Box sx={{ display: 'flex', gap: 1 }}>
                             {[{ key: 'small', label: t('settings.font_small'), size: '0.75rem' },
-                              { key: 'normal', label: t('settings.font_normal'), size: '0.875rem' },
-                              { key: 'large',  label: t('settings.font_large'),  size: '1.0625rem' }]
-                              .map(({ key, label, size }) => (
-                                <Button
-                                    key={key}
-                                    size="small"
-                                    variant={fontSize === key ? 'contained' : 'outlined'}
-                                    onClick={() => dispatch(setFontSize(key))}
-                                    sx={{ borderRadius: 2, px: 1.5, fontWeight: 700, minWidth: 0, fontSize: size }}
-                                >
-                                    {label}
-                                </Button>
-                            ))}
+                            { key: 'normal', label: t('settings.font_normal'), size: '0.875rem' },
+                            { key: 'large', label: t('settings.font_large'), size: '1.0625rem' }]
+                                .map(({ key, label, size }) => (
+                                    <Button
+                                        key={key}
+                                        size="small"
+                                        variant={fontSize === key ? 'contained' : 'outlined'}
+                                        onClick={() => dispatch(setFontSize(key))}
+                                        sx={{ borderRadius: 2, px: 1.5, fontWeight: 700, minWidth: 0, fontSize: size }}
+                                    >
+                                        {label}
+                                    </Button>
+                                ))}
                         </Box>
                     </ListItem>
 
@@ -398,112 +628,118 @@ const Settings = () => {
                         </Box>
                     </ListItem>
 
-                    <Divider variant="inset" component="li" />
+                    {!isGuest && (
+                        <>
+                            <Divider variant="inset" component="li" />
 
-                    {/* 4. Security / Password */}
-                    <ListItem sx={{ py: 2 }}>
-                        <ListItemIcon><Lock color="primary" /></ListItemIcon>
+                            {/* 4. Security / Password */}
+                            <ListItem sx={{ py: 2 }}>
+                                <ListItemIcon><Lock color="primary" /></ListItemIcon>
 
-                        <ListItemText
-                            primary={t('settings.account_security')}
-                            secondary={userData.hasPassword ? t('settings.update_password') : t('settings.set_local_password')}
-                            primaryTypographyProps={{ fontWeight: 700 }}
-                        />
-                        <Button
-                            variant="outlined"
-                            size="small"
-                            onClick={() => setChangePasswordOpen(true)}
-                            sx={{ borderRadius: 2, fontWeight: 700 }}
-                        >
-                            {userData.hasPassword ? t('settings.change_password_btn') : t('settings.set_password_btn')}
-                        </Button>
-                    </ListItem>
-
-                    <Divider variant="inset" component="li" />
-
-                    {/* 5. Connected Accounts */}
-                    <ListItem sx={{ py: 2 }}>
-                        <ListItemIcon><Language color="primary" /></ListItemIcon>
-
-                        <ListItemText
-                            primary={t('settings.connected_accounts')}
-                            secondary={t('settings.connected_accounts_desc')}
-                            primaryTypographyProps={{ fontWeight: 700 }}
-                        />
-                        <Box>
-                            {userData.isGoogleLinked ? (
+                                <ListItemText
+                                    primary={t('settings.account_security')}
+                                    secondary={userData.hasPassword ? t('settings.update_password') : t('settings.set_local_password')}
+                                    primaryTypographyProps={{ fontWeight: 700 }}
+                                />
                                 <Button
                                     variant="outlined"
-                                    color="error"
                                     size="small"
-                                    onClick={() => setUnlinkDialogOpen(true)}
+                                    onClick={() => setChangePasswordOpen(true)}
                                     sx={{ borderRadius: 2, fontWeight: 700 }}
                                 >
-                                    {t('settings.unlink_google')}
+                                    {userData.hasPassword ? t('settings.change_password_btn') : t('settings.set_password_btn')}
                                 </Button>
-                            ) : (
-                                <GoogleLogin
-                                    onSuccess={handleLinkGoogle}
-                                    onError={() => setNotification({ open: true, message: 'Google link popup closed or failed', severity: 'error' })}
-                                    useOneTap={false}
-                                    theme="filled_blue"
-                                    text="continue_with"
-                                    type="standard"
-                                    shape="pill"
+                            </ListItem>
+
+                            <Divider variant="inset" component="li" />
+
+                            {/* 5. Connected Accounts */}
+                            <ListItem sx={{ py: 2 }}>
+                                <ListItemIcon><Language color="primary" /></ListItemIcon>
+
+                                <ListItemText
+                                    primary={t('settings.connected_accounts')}
+                                    secondary={t('settings.connected_accounts_desc')}
+                                    primaryTypographyProps={{ fontWeight: 700 }}
                                 />
-                            )}
-                        </Box>
-                    </ListItem>
+                                <Box>
+                                    {userData.isGoogleLinked ? (
+                                        <Button
+                                            variant="outlined"
+                                            color="error"
+                                            size="small"
+                                            onClick={() => setUnlinkDialogOpen(true)}
+                                            sx={{ borderRadius: 2, fontWeight: 700 }}
+                                        >
+                                            {t('settings.unlink_google')}
+                                        </Button>
+                                    ) : (
+                                        <GoogleLogin
+                                            onSuccess={handleLinkGoogle}
+                                            onError={() => setNotification({ open: true, message: 'Google link popup closed or failed', severity: 'error' })}
+                                            useOneTap={false}
+                                            theme="filled_blue"
+                                            text="continue_with"
+                                            type="standard"
+                                            shape="pill"
+                                        />
+                                    )}
+                                </Box>
+                            </ListItem>
+                        </>
+                    )}
                 </List>
             </Paper>
 
             {/* Danger Zone — Delete Account */}
-            <Paper elevation={0} sx={{
-                p: { xs: 2, sm: 3 }, mt: 3, borderRadius: 4,
-                border: '1px solid',
-                borderColor: 'error.main',
-                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(211,47,47,0.08)' : 'rgba(211,47,47,0.04)'
-            }}>
+            {!isGuest && (
+                <Paper elevation={0} sx={{
+                    p: { xs: 2, sm: 3 }, mt: 3, borderRadius: 4,
+                    border: '1px solid',
+                    borderColor: 'error.main',
+                    bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(211,47,47,0.08)' : 'rgba(211,47,47,0.04)'
+                }}>
 
-                <List disablePadding>
-                    <ListItem sx={{ py: 1.5, px: 0 }}>
-                        <ListItemText
-                            primary={t('settings.delete_account')}
-                            secondary={
-                                userData.deleteRequestedAt
-                                    ? t('settings.delete_scheduled', {
-                                        date: new Date(new Date(userData.deleteRequestedAt).getTime() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-                                        days: Math.max(0, 14 - Math.floor((Date.now() - new Date(userData.deleteRequestedAt).getTime()) / (1000 * 60 * 60 * 24)))
-                                    })
-                                    : t('settings.delete_account_desc')
-                            }
-                            primaryTypographyProps={{ fontWeight: 700, color: 'error.main' }}
-                            secondaryTypographyProps={{ color: userData.deleteRequestedAt ? 'warning.main' : 'text.secondary' }}
-                        />
-                        {userData.deleteRequestedAt ? (
-                            <Button
-                                variant="outlined"
-                                color="success"
-                                size="small"
-                                onClick={handleCancelDelete}
-                                sx={{ borderRadius: 2, fontWeight: 700, ml: 2, flexShrink: 0 }}
-                            >
-                                {t('settings.cancel_deletion')}
-                            </Button>
-                        ) : (
-                            <Button
-                                variant="outlined"
-                                color="error"
-                                size="small"
-                                onClick={() => setRequestDeleteDialogOpen(true)}
-                                sx={{ borderRadius: 2, fontWeight: 700, ml: 2, flexShrink: 0 }}
-                            >
-                                {t('settings.request_deletion')}
-                            </Button>
-                        )}
-                    </ListItem>
-                </List>
-            </Paper>
+                    <List disablePadding>
+                        <ListItem sx={{ py: 1.5, px: 0 }}>
+                            <ListItemText
+                                primary={t('settings.delete_account')}
+                                secondary={
+                                    userData.deleteRequestedAt
+                                        ? t('settings.delete_scheduled', {
+                                            date: new Date(new Date(userData.deleteRequestedAt).getTime() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+                                            days: Math.max(0, 14 - Math.floor((Date.now() - new Date(userData.deleteRequestedAt).getTime()) / (1000 * 60 * 60 * 24)))
+                                        })
+                                        : t('settings.delete_account_desc')
+                                }
+                                primaryTypographyProps={{ fontWeight: 700, color: 'error.main' }}
+                                secondaryTypographyProps={{ color: userData.deleteRequestedAt ? 'warning.main' : 'text.secondary' }}
+                            />
+                            {userData.deleteRequestedAt ? (
+                                <Button
+                                    variant="outlined"
+                                    color="success"
+                                    size="small"
+                                    onClick={handleCancelDelete}
+                                    sx={{ borderRadius: 2, fontWeight: 700, ml: 2, flexShrink: 0 }}
+                                >
+                                    {t('settings.cancel_deletion')}
+                                </Button>
+                            ) : (
+                                <Button
+                                    variant="outlined"
+                                    color="error"
+                                    size="small"
+                                    onClick={() => setRequestDeleteDialogOpen(true)}
+                                    sx={{ borderRadius: 2, fontWeight: 700, ml: 2, flexShrink: 0 }}
+                                >
+                                    {t('settings.request_deletion')}
+                                </Button>
+                            )}
+                        </ListItem>
+                    </List>
+                </Paper>
+            )}
             {/* Edit Profile Dialog */}
             <Dialog
                 open={editProfileOpen}
@@ -598,7 +834,7 @@ const Settings = () => {
                         <TextField
                             fullWidth
                             type={showPassword ? 'text' : 'password'}
-                            label="Current Password"
+                            label={t('settings.current_password')}
                             value={passwordData.currentPassword}
                             onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
                             sx={{ mb: 2 }}
@@ -616,19 +852,57 @@ const Settings = () => {
                     <TextField
                         fullWidth
                         type={showPassword ? 'text' : 'password'}
-                        label="New Password"
+                        label={t('settings.new_password')}
                         value={passwordData.newPassword}
                         onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
                         sx={{ mb: 2 }}
                     />
+
+                    {/* Password Requirements Indicator */}
+                    {newPassword !== '' && (
+                        <Box sx={{ mt: 1, mb: 2, textAlign: 'left', px: 1 }}>
+                            <Typography variant="caption" fontWeight="700" color="text.secondary" gutterBottom display="block">
+                                {t('login.password_requirements_title')}
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                {[
+                                    { met: isMinLength, label: t('login.password_req_length') },
+                                    { met: hasLowercase, label: t('login.password_req_lowercase') },
+                                    { met: hasUppercase, label: t('login.password_req_uppercase') },
+                                    { met: hasNumber, label: t('login.password_req_number') },
+                                    { met: hasSpecial, label: t('login.password_req_special') }
+                                ].map((req, idx) => (
+                                        <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            <Box
+                                                sx={{
+                                                    width: 6,
+                                                    height: 6,
+                                                    borderRadius: '50%',
+                                                    bgcolor: req.met ? 'success.main' : 'text.disabled',
+                                                    transition: 'background-color 0.2s'
+                                                }}
+                                            />
+                                            <Typography
+                                                variant="caption"
+                                                color={req.met ? 'success.main' : 'text.secondary'}
+                                                sx={{ transition: 'color 0.2s' }}
+                                            >
+                                                {req.label}
+                                            </Typography>
+                                        </Box>
+                                    ))}
+                            </Box>
+                        </Box>
+                    )}
+
                     <TextField
                         fullWidth
                         type={showPassword ? 'text' : 'password'}
-                        label="Confirm New Password"
+                        label={t('settings.confirm_new_password')}
                         value={passwordData.confirmNewPassword}
                         onChange={(e) => setPasswordData({ ...passwordData, confirmNewPassword: e.target.value })}
-                        error={passwordData.newPassword !== passwordData.confirmNewPassword && passwordData.confirmNewPassword !== ''}
-                        helperText={passwordData.newPassword !== passwordData.confirmNewPassword && passwordData.confirmNewPassword !== '' ? "Passwords don't match" : ""}
+                        error={passwordData.confirmNewPassword !== '' && !passwordsMatch}
+                        helperText={passwordData.confirmNewPassword !== '' && !passwordsMatch ? t('login.password_mismatch') : ''}
                     />
                 </DialogContent>
                 <DialogActions sx={{ p: 3 }}>
@@ -640,7 +914,8 @@ const Settings = () => {
                         disabled={
                             (userData.hasPassword && !passwordData.currentPassword) ||
                             !passwordData.newPassword ||
-                            passwordData.newPassword !== passwordData.confirmNewPassword
+                            !passwordsMatch ||
+                            !isPasswordValid
                         }
                     >
                         {userData.hasPassword ? t('settings.update_password_btn') : t('settings.set_password_btn')}
@@ -699,6 +974,181 @@ const Settings = () => {
                     <Button variant="contained" color="error" onClick={handleRequestDelete}>
                         {t('settings.confirm_deletion_btn')}
                     </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Guest Register Sync Dialog */}
+            <Dialog
+                open={isGuestRegisterOpen}
+                onClose={() => !isMigrating && setIsGuestRegisterOpen(false)}
+                PaperProps={{ sx: { borderRadius: 4, width: '100%', maxWidth: 400 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 800 }}>
+                    {t('settings.guest_register_title')}
+                </DialogTitle>
+                <DialogContent>
+                    <form onSubmit={handleGuestRegisterSubmit}>
+                        <TextField
+                            fullWidth
+                            label={t('common.username')}
+                            value={guestCredentials.username}
+                            onChange={(e) => setGuestCredentials({ ...guestCredentials, username: e.target.value })}
+                            disabled={isMigrating}
+                            sx={{ mt: 1, mb: 2 }}
+                            required
+                        />
+                        <TextField
+                            fullWidth
+                            required
+                            label={t('login.email_optional')}
+                            value={guestCredentials.email}
+                            onChange={(e) => setGuestCredentials({ ...guestCredentials, email: e.target.value })}
+                            disabled={isMigrating}
+                            sx={{ mb: 2 }}
+                        />
+                        <TextField
+                            fullWidth
+                            type={showPassword ? 'text' : 'password'}
+                            label={t('common.password')}
+                            value={guestCredentials.password}
+                            onChange={(e) => setGuestCredentials({ ...guestCredentials, password: e.target.value })}
+                            disabled={isMigrating}
+                            sx={{ mb: 2 }}
+                            required
+                        />
+
+                        {/* Password Requirements Indicator */}
+                        {gPassword !== '' && (
+                            <Box sx={{ mt: 1, mb: 2, textAlign: 'left', px: 1 }}>
+                                <Typography variant="caption" fontWeight="700" color="text.secondary" gutterBottom display="block">
+                                    {t('login.password_requirements_title')}
+                                </Typography>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                    {[
+                                        { met: gIsMinLength, label: t('login.password_req_length') },
+                                        { met: gHasLowercase, label: t('login.password_req_lowercase') },
+                                        { met: gHasUppercase, label: t('login.password_req_uppercase') },
+                                        { met: gHasNumber, label: t('login.password_req_number') },
+                                        { met: gHasSpecial, label: t('login.password_req_special') }
+                                    ].map((req, idx) => (
+                                            <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                <Box
+                                                    sx={{
+                                                        width: 6,
+                                                        height: 6,
+                                                        borderRadius: '50%',
+                                                        bgcolor: req.met ? 'success.main' : 'text.disabled',
+                                                        transition: 'background-color 0.2s'
+                                                    }}
+                                                />
+                                                <Typography
+                                                    variant="caption"
+                                                    color={req.met ? 'success.main' : 'text.secondary'}
+                                                    sx={{ transition: 'color 0.2s' }}
+                                                >
+                                                    {req.label}
+                                                </Typography>
+                                            </Box>
+                                        ))}
+                                </Box>
+                            </Box>
+                        )}
+
+                        <TextField
+                            fullWidth
+                            type={showPassword ? 'text' : 'password'}
+                            label={t('login.confirm_password_label')}
+                            value={guestCredentials.confirmPassword}
+                            onChange={(e) => setGuestCredentials({ ...guestCredentials, confirmPassword: e.target.value })}
+                            disabled={isMigrating}
+                            error={guestCredentials.confirmPassword !== '' && !gPasswordsMatch}
+                            helperText={guestCredentials.confirmPassword !== '' && !gPasswordsMatch ? t('login.password_mismatch') : ''}
+                            sx={{ mb: 2 }}
+                            required
+                        />
+
+                        {/* Consent Checkbox */}
+                        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', textAlign: 'left', px: 1 }}>
+                            <Checkbox
+                                checked={guestConsentChecked}
+                                onClick={() => setConsentDialogOpen({ open: true, viewOnly: false })}
+                                color="primary"
+                                sx={{ p: 0, mr: 1 }}
+                            />
+                            <Typography variant="body2" color="text.secondary">
+                                <Link
+                                    component="button"
+                                    type="button"
+                                    variant="body2"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        setConsentDialogOpen({ open: true, viewOnly: false });
+                                    }}
+                                    sx={{ textDecoration: 'underline', color: 'inherit', fontWeight: 600, textAlign: 'left' }}
+                                >
+                                    {t('login.consent_checkbox')}
+                                </Link>
+                            </Typography>
+                        </Box>
+
+                        <DialogActions sx={{ p: 0, mt: 3 }}>
+                            <Button onClick={() => setIsGuestRegisterOpen(false)} sx={{ fontWeight: 700 }}>
+                                {t('common.cancel')}
+                            </Button>
+                            {guestConsentChecked && (
+                                <Button
+                                    type="submit"
+                                    disabled={isMigrating || !gIsPasswordValid || !gPasswordsMatch}
+                                    variant="contained"
+                                    sx={{ fontWeight: 700, borderRadius: 2 }}
+                                >
+                                    {isMigrating ? t('common.loading') : t('settings.guest_register_sync')}
+                                </Button>
+                            )}
+                        </DialogActions>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Terms of Service & Privacy Policy Consent Dialog */}
+            <Dialog open={consentDialogOpen.open} onClose={() => setConsentDialogOpen({ open: false, viewOnly: false })} maxWidth="sm" fullWidth>
+                <DialogTitle fontWeight={800}>{t('login.consent_dialog_title')}</DialogTitle>
+                <DialogContent dividers>
+                    <Typography variant="body2" color="text.secondary" paragraph>
+                        {t('login.consent_dialog_body')}
+                    </Typography>
+                    <Typography variant="subtitle2" fontWeight={800} gutterBottom sx={{ mt: 2 }}>
+                        {t('login.consent_dialog_tos_title')}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" paragraph>
+                        {t('login.consent_dialog_tos_body')}
+                    </Typography>
+                    <Typography variant="subtitle2" fontWeight={800} gutterBottom sx={{ mt: 2 }}>
+                        {t('login.consent_dialog_privacy_title')}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" paragraph>
+                        {t('login.consent_dialog_privacy_body')}
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                    {!consentDialogOpen.viewOnly ? (
+                        <>
+                            <Button color="error" onClick={() => {
+                                setGuestConsentChecked(false);
+                                setConsentDialogOpen({ open: false, viewOnly: false });
+                            }}>
+                                {t('common.cancel')}
+                            </Button>
+                            <Button variant="contained" color="success" onClick={() => {
+                                setGuestConsentChecked(true);
+                                setConsentDialogOpen({ open: false, viewOnly: false });
+                            }}>
+                                {t('login.consent_dialog_accept')}
+                            </Button>
+                        </>
+                    ) : (
+                        <Button variant="contained" onClick={() => setConsentDialogOpen({ open: false, viewOnly: false })}>{t('common.close')}</Button>
+                    )}
                 </DialogActions>
             </Dialog>
 

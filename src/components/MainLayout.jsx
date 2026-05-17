@@ -24,7 +24,7 @@ import { fetchPortfolios, setActivePortfolio } from '../features/portfolioSlice'
 import PortfolioManagerModal from './PortfolioManagerModal';
 import usePermission from '../hooks/usePermission';
 import { PERMISSIONS } from '../constants/permissions';
-
+import Logo from './Logo';
 
 const drawerWidth = 240;
 
@@ -147,7 +147,7 @@ const MainLayout = ({ children }) => {
                     sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }}
                     onClick={() => navigate('/dashboard')}
                 >
-                    <Box component="img" src="/favicon.svg" sx={{ width: 170, height: 70 }} />
+                    <Logo width={170} height={70} />
                 </Box>
                 {isMobile && (
                     <IconButton onClick={() => setOpen(false)}>
@@ -223,21 +223,21 @@ const MainLayout = ({ children }) => {
                             </Typography>
                             {/* Portfolio Selector */}
                             {!portfoliosLoading && portfolios.length > 0 ? (
-                                <Box 
+                                <Box
                                     onClick={(e) => setPortfolioMenuAnchor(e.currentTarget)}
-                                    sx={{ 
-                                        display: 'flex', 
-                                        alignItems: 'center', 
+                                    sx={{
+                                        display: 'flex',
+                                        alignItems: 'center',
                                         cursor: 'pointer',
                                         mt: 0.5,
                                         '&:hover': { opacity: 0.8 }
                                     }}
                                 >
-                                    <Box sx={{ 
-                                        width: 10, height: 10, 
-                                        borderRadius: '50%', 
-                                        bgcolor: activePortfolio?.colorCode || 'primary.main', 
-                                        mr: 1 
+                                    <Box sx={{
+                                        width: 10, height: 10,
+                                        borderRadius: '50%',
+                                        bgcolor: activePortfolio?.colorCode || 'primary.main',
+                                        mr: 1
                                     }} />
                                     <Typography variant="caption" fontWeight="700" color="text.secondary">
                                         {activePortfolio?.name || 'Select Portfolio'}
@@ -245,12 +245,12 @@ const MainLayout = ({ children }) => {
                                 </Box>
                             ) : (
                                 !portfoliosLoading && (
-                                    <Button 
-                                        size="small" 
-                                        variant="text" 
+                                    <Button
+                                        size="small"
+                                        variant="text"
                                         onClick={() => setPortfolioManagerOpen(true)}
-                                        sx={{ 
-                                            p: 0, minWidth: 0, textTransform: 'none', 
+                                        sx={{
+                                            p: 0, minWidth: 0, textTransform: 'none',
                                             fontSize: '0.75rem', fontWeight: 700,
                                             color: 'primary.main', justifyContent: 'flex-start',
                                             mt: 0.5
@@ -264,15 +264,15 @@ const MainLayout = ({ children }) => {
                     </Box>
 
                     {/* Portfolio Menu Dropdown */}
-                    <Menu 
-                        anchorEl={portfolioMenuAnchor} 
-                        open={Boolean(portfolioMenuAnchor)} 
+                    <Menu
+                        anchorEl={portfolioMenuAnchor}
+                        open={Boolean(portfolioMenuAnchor)}
                         onClose={() => setPortfolioMenuAnchor(null)}
                         PaperProps={{ sx: { minWidth: 200, borderRadius: 2, mt: 1 } }}
                     >
                         {portfolios.map(port => (
-                            <MenuItem 
-                                key={port.id} 
+                            <MenuItem
+                                key={port.id}
                                 selected={port.id === activePortfolioId}
                                 onClick={() => {
                                     dispatch(setActivePortfolio(port.id));
@@ -285,7 +285,7 @@ const MainLayout = ({ children }) => {
                             </MenuItem>
                         ))}
                         <Divider />
-                        <MenuItem 
+                        <MenuItem
                             onClick={() => {
                                 setPortfolioMenuAnchor(null);
                                 setPortfolioManagerOpen(true);
@@ -320,7 +320,7 @@ const MainLayout = ({ children }) => {
                                 {userData.displayName || userData.username || 'User'}
                             </Typography>
                             <Typography variant="caption" color="text.secondary" noWrap>
-                                {userData.role || 'Member'}
+                                {userData.roleName || 'Member'}
                             </Typography>
                         </Box>
                         <Divider sx={{ mb: 1 }} />
@@ -352,7 +352,7 @@ const MainLayout = ({ children }) => {
                 severity="error"
             />
 
-            <PortfolioManagerModal 
+            <PortfolioManagerModal
                 open={portfolioManagerOpen}
                 onClose={() => setPortfolioManagerOpen(false)}
             />
