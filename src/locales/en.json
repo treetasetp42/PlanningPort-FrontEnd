@@ -77,7 +77,8 @@
     "register_button": "Register",
     "register_success": "Registration successful! Please log in.",
     "register_failed": "Registration failed",
-    "email_optional": "Email (Optional)",
+    "email_optional": "Email",
+    "please_enter_email": "Please enter your email address",
     "confirm_password_label": "Confirm Password",
     "password_requirements_title": "Password Requirements:",
     "password_req_length": "At least 8 characters",
@@ -100,7 +101,8 @@
     "link_confirm_body2": "is already registered.",
     "link_confirm_question": "Would you like to link your Google account to this profile so you can log in with Google in the future? If you decline, this login attempt will be cancelled.",
     "link_success": "Account successfully linked!",
-    "link_failed": "Failed to link account"
+    "link_failed": "Failed to link account",
+    "guest_mode": "Guest Mode / ผู้เยี่ยมชม"
   },
   "watchlist": {
     "subtitle": "Keep track of your favorite symbols and stay updated.",
@@ -160,7 +162,13 @@
     "font_large": "Large",
     "current_password": "Current Password",
     "new_password": "New Password",
-    "confirm_new_password": "Confirm New Password"
+    "confirm_new_password": "Confirm New Password",
+    "guest_banner_title": "Guest Mode (ผู้เยี่ยมชม)",
+    "guest_banner_body": "Your portfolios, cash transactions, and trade logs are stored locally in your browser. Register an account or Link Google to sync and back up all your guest portfolios to the cloud!",
+    "guest_register_sync": "Register & Backup to Cloud",
+    "guest_google_sync": "Link Google & Sync",
+    "guest_register_title": "Register & Migrate Local Data",
+    "guest_register_success": "Registration and data migration successful!"
   },
   "confirm": {
     "logout_title": "Confirm Logout",

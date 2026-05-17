@@ -8,7 +8,7 @@ import {
 import axiosClient from '../api/axiosClient';
 import UrlPP from '../api/UrlPP';
 import { useDispatch, useSelector } from 'react-redux';
-import { loginSuccess } from '../features/authSlice';
+import { loginSuccess, loginGuest } from '../features/authSlice';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from 'notistack';
@@ -60,6 +60,12 @@ const Login = () => {
         }
     }, [isAuthenticated, navigate]);
 
+    const handleGuestLogin = () => {
+        dispatch(loginGuest());
+        enqueueSnackbar(t('login.login_success'), { variant: 'success' });
+        navigate('/');
+    };
+
     const handleLogin = async (e) => {
         e.preventDefault();
         setIsLoading(true);
@@ -90,6 +96,12 @@ const Login = () => {
             }
         } else {
             // REGISTER
+            if (!credentials.email || !credentials.email.trim()) {
+                enqueueSnackbar(t('login.please_enter_email'), { variant: 'error' });
+                setIsLoading(false);
+                clearTimeout(coldStartTimer);
+                return;
+            }
             if (!isPasswordValid || !passwordsMatch || !consentChecked) {
                 enqueueSnackbar(t('login.register_failed') + ': Validation error', { variant: 'error' });
                 setIsLoading(false);
@@ -213,6 +225,7 @@ const Login = () => {
                         {tabIndex === 1 && (
                             <TextField
                                 fullWidth
+                                required
                                 label={t('login.email_optional')}
                                 type="email"
                                 margin="normal"
@@ -368,6 +381,28 @@ const Login = () => {
                             text={tabIndex === 0 ? 'signin_with' : 'signup_with'}
                             disabled={isLoading}
                         />
+                    </Box>
+
+                    {/* Guest Mode Button */}
+                    <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+                        <Button
+                            variant="outlined"
+                            onClick={handleGuestLogin}
+                            disabled={isLoading}
+                            sx={{
+                                textTransform: 'none',
+                                fontWeight: 700,
+                                px: 4,
+                                py: 1,
+                                borderRadius: 8,
+                                borderWidth: '2px !important',
+                                '&:hover': {
+                                    bgcolor: 'action.hover'
+                                }
+                            }}
+                        >
+                            {t('login.guest_mode') || (i18n.language.startsWith('th') ? 'ผู้เยี่ยมชม / Guest Mode' : 'Guest Mode / ผู้เยี่ยมชม')}
+                        </Button>
                     </Box>
 
                     {/* Google TOS and Privacy Policy disclaimer */}

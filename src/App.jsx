@@ -14,7 +14,7 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminRoles from './pages/admin/AdminRoles'
 import axiosClient from './api/axiosClient'
 import UrlPP from './api/UrlPP'
-import { logout, loginSuccess } from './features/authSlice'
+import { logout, loginSuccess, loginGuest } from './features/authSlice'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { PERMISSIONS } from './constants/permissions'
 import FullScreenLoader from './components/FullScreenLoader'
@@ -42,6 +42,8 @@ function App() {
         } catch (err) {
           dispatch(logout());
         }
+      } else if (localStorage.getItem('isGuest') === 'true') {
+        dispatch(loginGuest());
       } else {
         if (!sessionStorage.getItem('isWarmedUp')) {
           axiosClient.get(UrlPP.User.Health).catch(() => { });

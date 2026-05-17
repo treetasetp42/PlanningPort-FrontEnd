@@ -44,6 +44,27 @@ const Dashboard = () => {
             setData(res.data);
         } catch (err) {
             console.error("Fetch error", err);
+            const initialFallback = {
+                totalValue: 0,
+                cashBalance: 0,
+                realizedProfit: 0,
+                totalInvestment: 0,
+                totalUnrealizedProfit: 0,
+                assets: [],
+                allocation: []
+            };
+            setData(initialFallback);
+            try {
+                const cashRes = await axiosClient.get(UrlPP.Cash.GetBalance(activePortfolioId));
+                const cash = cashRes.data.balance || 0;
+                setData({
+                    ...initialFallback,
+                    totalValue: cash,
+                    cashBalance: cash
+                });
+            } catch (cashErr) {
+                console.error("Fetch fallback cash error", cashErr);
+            }
         } finally {
             setLoading(false);
         }
