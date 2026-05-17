@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import {
     Container, TextField, Button, Typography, Box, Paper,
     useTheme, useMediaQuery,
-    Divider, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions
+    Divider, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions,
+    Checkbox, Link
 } from '@mui/material';
 import axiosClient from '../api/axiosClient';
 import UrlPP from '../api/UrlPP';
@@ -12,17 +13,32 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from 'notistack';
 import { GoogleLogin } from '@react-oauth/google';
+import Logo from '../components/Logo';
 
 const Login = () => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
+    const currentLanguage = i18n.language ? i18n.language.split('-')[0] : 'en';
     const { enqueueSnackbar } = useSnackbar();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [tabIndex, setTabIndex] = useState(0);
-    const [credentials, setCredentials] = useState({ remoteUser: '', remotePassword: '', email: '' });
+    const [credentials, setCredentials] = useState({ remoteUser: '', remotePassword: '', confirmPassword: '', email: '' });
     const [isLoading, setIsLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
     const [linkDialog, setLinkDialog] = useState({ open: false, email: '', credential: '' });
+
+    const [consentChecked, setConsentChecked] = useState(false);
+    const [consentDialogOpen, setConsentDialogOpen] = useState({ open: false, viewOnly: false });
+
+    // Password requirements validation rules
+    const password = credentials.remotePassword || '';
+    const isMinLength = password.length >= 8;
+    const hasLowercase = /[a-z]/.test(password);
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecial = /[^A-Za-z0-9]/.test(password);
+    const isPasswordValid = isMinLength && hasLowercase && hasUppercase && hasNumber && hasSpecial;
+    const passwordsMatch = password !== '' && password === credentials.confirmPassword;
 
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -74,11 +90,23 @@ const Login = () => {
             }
         } else {
             // REGISTER
+            if (!isPasswordValid || !passwordsMatch || !consentChecked) {
+                enqueueSnackbar(t('login.register_failed') + ': Validation error', { variant: 'error' });
+                setIsLoading(false);
+                clearTimeout(coldStartTimer);
+                return;
+            }
+
             try {
-                await axiosClient.post(UrlPP.User.Register, credentials);
+                await axiosClient.post(UrlPP.User.Register, {
+                    remoteUser: credentials.remoteUser,
+                    remotePassword: credentials.remotePassword,
+                    email: credentials.email
+                });
                 enqueueSnackbar(t('login.register_success'), { variant: 'success' });
                 setTabIndex(0);
-                setCredentials({ ...credentials, remotePassword: '' });
+                setCredentials({ remoteUser: '', remotePassword: '', confirmPassword: '', email: '' });
+                setConsentChecked(false);
             } catch (error) {
                 enqueueSnackbar(t('login.register_failed') + ': ' + (error.response?.data || ''), { variant: 'error' });
             } finally {
@@ -154,14 +182,18 @@ const Login = () => {
                     width: '100%'
                 }}>
                     <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-                        <Tabs value={tabIndex} onChange={(e, newValue) => setTabIndex(newValue)} variant="fullWidth">
+                        <Tabs value={tabIndex} onChange={(e, newValue) => {
+                            setTabIndex(newValue);
+                            setConsentChecked(false);
+                            setCredentials({ remoteUser: '', remotePassword: '', confirmPassword: '', email: '' });
+                        }} variant="fullWidth">
                             <Tab label={t('common.login')} sx={{ fontWeight: 700 }} />
                             <Tab label={t('login.register_tab')} sx={{ fontWeight: 700 }} />
                         </Tabs>
                     </Box>
 
                     <Box sx={{ mb: 3, textAlign: 'center' }}>
-                        <Box component="img" src="/favicon.svg" alt="Logo" sx={{ height: 110, mb: 2, mx: 'auto', display: 'block' }} />
+                        {tabIndex === 0 && <Logo height={110} style={{ margin: '0 auto 16px auto' }} />}
                         <Typography variant="body2" color="text.secondary">
                             {tabIndex === 0 ? t('login.subtitle') : t('login.register_subtitle')}
                         </Typography>
@@ -201,15 +233,109 @@ const Login = () => {
                             value={credentials.remotePassword}
                             onChange={(e) => setCredentials({ ...credentials, remotePassword: e.target.value })}
                         />
-                        <Button
-                            fullWidth
-                            type="submit"
-                            variant="contained"
-                            disabled={isLoading}
-                            sx={{ mt: 4, py: 1.5, borderRadius: 2, fontWeight: 700 }}
-                        >
-                            {isLoading ? loadingMessage : (tabIndex === 0 ? t('common.login') : t('login.register_button'))}
-                        </Button>
+
+                        {/* Password Requirements Indicator */}
+                        {tabIndex === 1 && password !== '' && (
+                            <Box sx={{ mt: 1, mb: 1, textAlign: 'left', px: 1 }}>
+                                <Typography variant="caption" fontWeight="700" color="text.secondary" gutterBottom display="block">
+                                    {t('login.password_requirements_title')}
+                                </Typography>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                    {[
+                                        { met: isMinLength, label: t('login.password_req_length') },
+                                        { met: hasLowercase, label: t('login.password_req_lowercase') },
+                                        { met: hasUppercase, label: t('login.password_req_uppercase') },
+                                        { met: hasNumber, label: t('login.password_req_number') },
+                                        { met: hasSpecial, label: t('login.password_req_special') }
+                                    ].map((req, idx) => (
+                                        <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            <Box
+                                                sx={{
+                                                    width: 6,
+                                                    height: 6,
+                                                    borderRadius: '50%',
+                                                    bgcolor: req.met ? 'success.main' : 'text.disabled',
+                                                    transition: 'background-color 0.2s'
+                                                }}
+                                            />
+                                            <Typography
+                                                variant="caption"
+                                                color={req.met ? 'success.main' : 'text.secondary'}
+                                                sx={{ transition: 'color 0.2s' }}
+                                            >
+                                                {req.label}
+                                            </Typography>
+                                        </Box>
+                                    ))}
+                                </Box>
+                            </Box>
+                        )}
+
+                        {tabIndex === 1 && (
+                            <TextField
+                                fullWidth
+                                required
+                                label={t('login.confirm_password_label')}
+                                type="password"
+                                margin="normal"
+                                variant="outlined"
+                                disabled={isLoading}
+                                value={credentials.confirmPassword}
+                                onChange={(e) => setCredentials({ ...credentials, confirmPassword: e.target.value })}
+                                error={credentials.confirmPassword !== '' && !passwordsMatch}
+                                helperText={credentials.confirmPassword !== '' && !passwordsMatch ? t('login.password_mismatch') : ''}
+                            />
+                        )}
+
+                        {/* Consent Checkbox */}
+                        {tabIndex === 1 && (
+                            <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', textAlign: 'left', px: 1 }}>
+                                <Checkbox
+                                    checked={consentChecked}
+                                    onClick={() => setConsentDialogOpen({ open: true, viewOnly: false })}
+                                    color="primary"
+                                    sx={{ p: 0, mr: 1 }}
+                                />
+                                <Typography variant="body2" color="text.secondary">
+                                    <Link
+                                        component="button"
+                                        type="button"
+                                        variant="body2"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            setConsentDialogOpen({ open: true, viewOnly: false });
+                                        }}
+                                        sx={{ textDecoration: 'underline', color: 'inherit', fontWeight: 600, textAlign: 'left' }}
+                                    >
+                                        {t('login.consent_checkbox')}
+                                    </Link>
+                                </Typography>
+                            </Box>
+                        )}
+
+                        {tabIndex === 0 ? (
+                            <Button
+                                fullWidth
+                                type="submit"
+                                variant="contained"
+                                disabled={isLoading}
+                                sx={{ mt: 4, py: 1.5, borderRadius: 2, fontWeight: 700 }}
+                            >
+                                {isLoading ? loadingMessage : t('common.login')}
+                            </Button>
+                        ) : (
+                            consentChecked && (
+                                <Button
+                                    fullWidth
+                                    type="submit"
+                                    variant="contained"
+                                    disabled={isLoading || !isPasswordValid || !passwordsMatch}
+                                    sx={{ mt: 4, py: 1.5, borderRadius: 2, fontWeight: 700 }}
+                                >
+                                    {isLoading ? loadingMessage : t('login.register_button')}
+                                </Button>
+                            )
+                        )}
 
                         {tabIndex === 0 && (
                             <Box sx={{ mt: 2, textAlign: 'center' }}>
@@ -243,6 +369,72 @@ const Login = () => {
                             disabled={isLoading}
                         />
                     </Box>
+
+                    {/* Google TOS and Privacy Policy disclaimer */}
+                    <Box sx={{ mt: 2, textAlign: 'center', px: 2 }}>
+                        <Typography variant="caption" color="text.secondary">
+                            {t('common.login') === 'เข้าสู่ระบบ' ? (
+                                <>
+                                    ในการคลิก 'ดำเนินการต่อด้วย Google' คุณยอมรับ{' '}
+                                    <Link
+                                        component="button"
+                                        type="button"
+                                        variant="caption"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            setConsentDialogOpen({ open: true, viewOnly: true });
+                                        }}
+                                        sx={{ verticalAlign: 'baseline', fontWeight: 600, textDecoration: 'underline', color: 'text.secondary' }}
+                                    >
+                                        ข้อตกลงการให้บริการ
+                                    </Link>{' '}
+                                    และ{' '}
+                                    <Link
+                                        component="button"
+                                        type="button"
+                                        variant="caption"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            setConsentDialogOpen({ open: true, viewOnly: true });
+                                        }}
+                                        sx={{ verticalAlign: 'baseline', fontWeight: 600, textDecoration: 'underline', color: 'text.secondary' }}
+                                    >
+                                        นโยบายความเป็นส่วนตัว
+                                    </Link>
+                                </>
+                            ) : (
+                                <>
+                                    By clicking 'Continue with Google', you agree to our{' '}
+                                    <Link
+                                        component="button"
+                                        type="button"
+                                        variant="caption"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            setConsentDialogOpen({ open: true, viewOnly: true });
+                                        }}
+                                        sx={{ verticalAlign: 'baseline', fontWeight: 600, textDecoration: 'underline', color: 'text.secondary' }}
+                                    >
+                                        Terms of Service
+                                    </Link>{' '}
+                                    and{' '}
+                                    <Link
+                                        component="button"
+                                        type="button"
+                                        variant="caption"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            setConsentDialogOpen({ open: true, viewOnly: true });
+                                        }}
+                                        sx={{ verticalAlign: 'baseline', fontWeight: 600, textDecoration: 'underline', color: 'text.secondary' }}
+                                    >
+                                        Privacy Policy
+                                    </Link>
+                                    .
+                                </>
+                            )}
+                        </Typography>
+                    </Box>
                 </Paper>
             </Box>
 
@@ -263,6 +455,95 @@ const Login = () => {
                     <Button variant="contained" onClick={handleConfirmLink} disabled={isLoading}>
                         {isLoading ? loadingMessage : t('login.link_account')}
                     </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Consent dialog (Terms of Service & Privacy Policy) */}
+            <Dialog
+                open={consentDialogOpen.open}
+                onClose={() => setConsentDialogOpen((prev) => ({ ...prev, open: false }))}
+                maxWidth="sm"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 4 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 800, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+                    <Box>{t('login.consent_dialog_title')}</Box>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                        {[{ key: 'en', label: 'EN' }, { key: 'th', label: 'TH' }].map(({ key, label }) => (
+                            <Button
+                                key={key}
+                                size="small"
+                                variant={currentLanguage === key ? 'contained' : 'text'}
+                                onClick={() => i18n.changeLanguage(key)}
+                                sx={{
+                                    borderRadius: 3,
+                                    fontWeight: 700,
+                                    px: 1.5,
+                                    py: 0.25,
+                                    fontSize: '0.7rem',
+                                    minWidth: 'auto',
+                                    ...(currentLanguage !== key && {
+                                        color: 'text.secondary',
+                                    })
+                                }}
+                            >
+                                {label}
+                            </Button>
+                        ))}
+                    </Box>
+                </DialogTitle>
+                <DialogContent dividers>
+                    <Typography variant="body2" color="text.primary" paragraph sx={{ whiteSpace: 'pre-line', fontWeight: 500 }}>
+                        {t('login.consent_dialog_body')}
+                    </Typography>
+
+                    <Typography variant="subtitle2" fontWeight="700" color="primary.main" gutterBottom sx={{ mt: 2 }}>
+                        {t('login.consent_dialog_tos_title')}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" paragraph>
+                        {t('login.consent_dialog_tos_body')}
+                    </Typography>
+
+                    <Typography variant="subtitle2" fontWeight="700" color="primary.main" gutterBottom sx={{ mt: 2 }}>
+                        {t('login.consent_dialog_privacy_title')}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" paragraph>
+                        {t('login.consent_dialog_privacy_body')}
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ p: 2.5 }}>
+                    {!consentDialogOpen.viewOnly ? (
+                        <>
+                            <Button
+                                onClick={() => {
+                                    setConsentChecked(false);
+                                    setConsentDialogOpen({ open: false, viewOnly: false });
+                                }}
+                                sx={{ fontWeight: 700 }}
+                                color="inherit"
+                            >
+                                {t('common.cancel')}
+                            </Button>
+                            <Button
+                                variant="contained"
+                                onClick={() => {
+                                    setConsentChecked(true);
+                                    setConsentDialogOpen({ open: false, viewOnly: false });
+                                }}
+                                sx={{ fontWeight: 700, borderRadius: 2 }}
+                            >
+                                {t('login.consent_dialog_accept')}
+                            </Button>
+                        </>
+                    ) : (
+                        <Button
+                            variant="contained"
+                            onClick={() => setConsentDialogOpen((prev) => ({ ...prev, open: false }))}
+                            sx={{ fontWeight: 700, borderRadius: 2 }}
+                        >
+                            {t('common.close')}
+                        </Button>
+                    )}
                 </DialogActions>
             </Dialog>
         </Container>

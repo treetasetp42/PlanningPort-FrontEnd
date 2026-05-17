@@ -9,10 +9,14 @@ import App from './App';
 import { BrowserRouter } from 'react-router-dom';
 import { SnackbarProvider } from 'notistack';
 import NotifierPipe from './components/NotifierPipe';
+import useDynamicFavicon from './hooks/useDynamicFavicon';
 
 const Root = () => {
   const { darkMode, primaryColor, fontSize } = useSelector((state) => state.theme);
   const theme = getAppTheme(darkMode, primaryColor, fontSize);
+
+  // Dynamically change browser tab favicon to match user's selected primary color and theme mode
+  useDynamicFavicon(darkMode, primaryColor);
 
   return (
     <ThemeProvider theme={theme}>

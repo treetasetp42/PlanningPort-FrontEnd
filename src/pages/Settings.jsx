@@ -60,6 +60,15 @@ const Settings = () => {
         confirmNewPassword: ''
     });
 
+    const newPassword = passwordData.newPassword || '';
+    const isMinLength = newPassword.length >= 8;
+    const hasLowercase = /[a-z]/.test(newPassword);
+    const hasUppercase = /[A-Z]/.test(newPassword);
+    const hasNumber = /[0-9]/.test(newPassword);
+    const hasSpecial = /[^A-Za-z0-9]/.test(newPassword);
+    const isPasswordValid = isMinLength && hasLowercase && hasUppercase && hasNumber && hasSpecial;
+    const passwordsMatch = newPassword !== '' && newPassword === passwordData.confirmNewPassword;
+
     const [notification, setNotification] = useState({ open: false, message: '', severity: 'info' });
     const colors = ['#1976d2', '#d32f2f', '#388e3c', '#7b1fa2', '#f57c00'];
 
@@ -175,7 +184,12 @@ const Settings = () => {
     };
     const handleUpdatePassword = async () => {
         if (passwordData.newPassword !== passwordData.confirmNewPassword) {
-            setNotification({ open: true, message: 'New passwords do not match', severity: 'error' });
+            setNotification({ open: true, message: t('login.password_mismatch'), severity: 'error' });
+            return;
+        }
+
+        if (!isPasswordValid) {
+            setNotification({ open: true, message: 'Password does not meet security requirements', severity: 'error' });
             return;
         }
 
@@ -277,7 +291,7 @@ const Settings = () => {
                         {userData.displayName || userData.username || 'Loading...'}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                        {userData.role || 'Member'} — {userData.email}
+                        {userData.roleName || 'Member'} — {userData.email || '@' + userData.username}
                     </Typography>
                     <Button
                         variant="outlined"
@@ -353,19 +367,19 @@ const Settings = () => {
                         />
                         <Box sx={{ display: 'flex', gap: 1 }}>
                             {[{ key: 'small', label: t('settings.font_small'), size: '0.75rem' },
-                              { key: 'normal', label: t('settings.font_normal'), size: '0.875rem' },
-                              { key: 'large',  label: t('settings.font_large'),  size: '1.0625rem' }]
-                              .map(({ key, label, size }) => (
-                                <Button
-                                    key={key}
-                                    size="small"
-                                    variant={fontSize === key ? 'contained' : 'outlined'}
-                                    onClick={() => dispatch(setFontSize(key))}
-                                    sx={{ borderRadius: 2, px: 1.5, fontWeight: 700, minWidth: 0, fontSize: size }}
-                                >
-                                    {label}
-                                </Button>
-                            ))}
+                            { key: 'normal', label: t('settings.font_normal'), size: '0.875rem' },
+                            { key: 'large', label: t('settings.font_large'), size: '1.0625rem' }]
+                                .map(({ key, label, size }) => (
+                                    <Button
+                                        key={key}
+                                        size="small"
+                                        variant={fontSize === key ? 'contained' : 'outlined'}
+                                        onClick={() => dispatch(setFontSize(key))}
+                                        sx={{ borderRadius: 2, px: 1.5, fontWeight: 700, minWidth: 0, fontSize: size }}
+                                    >
+                                        {label}
+                                    </Button>
+                                ))}
                         </Box>
                     </ListItem>
 
@@ -598,7 +612,7 @@ const Settings = () => {
                         <TextField
                             fullWidth
                             type={showPassword ? 'text' : 'password'}
-                            label="Current Password"
+                            label={t('settings.current_password')}
                             value={passwordData.currentPassword}
                             onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
                             sx={{ mb: 2 }}
@@ -616,19 +630,57 @@ const Settings = () => {
                     <TextField
                         fullWidth
                         type={showPassword ? 'text' : 'password'}
-                        label="New Password"
+                        label={t('settings.new_password')}
                         value={passwordData.newPassword}
                         onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
                         sx={{ mb: 2 }}
                     />
+
+                    {/* Password Requirements Indicator */}
+                    {newPassword !== '' && (
+                        <Box sx={{ mt: 1, mb: 2, textAlign: 'left', px: 1 }}>
+                            <Typography variant="caption" fontWeight="700" color="text.secondary" gutterBottom display="block">
+                                {t('login.password_requirements_title')}
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                {[
+                                    { met: isMinLength, label: t('login.password_req_length') },
+                                    { met: hasLowercase, label: t('login.password_req_lowercase') },
+                                    { met: hasUppercase, label: t('login.password_req_uppercase') },
+                                    { met: hasNumber, label: t('login.password_req_number') },
+                                    { met: hasSpecial, label: t('login.password_req_special') }
+                                ].map((req, idx) => (
+                                        <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            <Box
+                                                sx={{
+                                                    width: 6,
+                                                    height: 6,
+                                                    borderRadius: '50%',
+                                                    bgcolor: req.met ? 'success.main' : 'text.disabled',
+                                                    transition: 'background-color 0.2s'
+                                                }}
+                                            />
+                                            <Typography
+                                                variant="caption"
+                                                color={req.met ? 'success.main' : 'text.secondary'}
+                                                sx={{ transition: 'color 0.2s' }}
+                                            >
+                                                {req.label}
+                                            </Typography>
+                                        </Box>
+                                    ))}
+                            </Box>
+                        </Box>
+                    )}
+
                     <TextField
                         fullWidth
                         type={showPassword ? 'text' : 'password'}
-                        label="Confirm New Password"
+                        label={t('settings.confirm_new_password')}
                         value={passwordData.confirmNewPassword}
                         onChange={(e) => setPasswordData({ ...passwordData, confirmNewPassword: e.target.value })}
-                        error={passwordData.newPassword !== passwordData.confirmNewPassword && passwordData.confirmNewPassword !== ''}
-                        helperText={passwordData.newPassword !== passwordData.confirmNewPassword && passwordData.confirmNewPassword !== '' ? "Passwords don't match" : ""}
+                        error={passwordData.confirmNewPassword !== '' && !passwordsMatch}
+                        helperText={passwordData.confirmNewPassword !== '' && !passwordsMatch ? t('login.password_mismatch') : ''}
                     />
                 </DialogContent>
                 <DialogActions sx={{ p: 3 }}>
@@ -640,7 +692,8 @@ const Settings = () => {
                         disabled={
                             (userData.hasPassword && !passwordData.currentPassword) ||
                             !passwordData.newPassword ||
-                            passwordData.newPassword !== passwordData.confirmNewPassword
+                            !passwordsMatch ||
+                            !isPasswordValid
                         }
                     >
                         {userData.hasPassword ? t('settings.update_password_btn') : t('settings.set_password_btn')}

@@ -2,17 +2,25 @@
  
  All notable changes to this project will be documented in this file.
  
-+## [1.0.1] - 2026-05-16
-+### Added
-+- **Global App Initialization**: Introduced `isAppReady` state to guard the application until authentication is verified.
-+- **UI/UX**: Added `FullScreenLoader` component to provide a smooth transition during app startup.
-+- **Cold Start Optimization**: Implemented a silent background ping to the Azure backend to wake it up early.
-+- **Auth Flow Fix**: Eliminated the "Flash of Mockup Data" by awaiting the profile fetch before rendering the main UI.
-+
-+### Changed
-+- **Stability**: Refactored `App.jsx` and `Login.jsx` to handle slow server connections gracefully.
-+- **Environment**: Verified compatibility with the upgraded .NET 10.0 backend.
-+
+## [1.0.2] - 2026-05-17
+### Changed
+- **User Interface**: Updated the application logo to a new design.
+- **Consent Dialog**: TOS and Privacy Policy Dialog UI.
+
+## [1.0.1] - 2026-05-16
+### Added
+- **Global App Initialization**: Introduced `isAppReady` state to guard the application until authentication is verified.
+
+- **UI/UX**: Added `FullScreenLoader` component to provide a smooth transition during app startup.
+
+- **Cold Start Optimization**: Implemented a silent background ping to the Azure backend to wake it up early.
+
+- **Auth Flow Fix**: Eliminated the "Flash of Mockup Data" by awaiting the profile fetch before rendering the main UI.
+
+### Changed
+- **Stability**: Refactored `App.jsx` and `Login.jsx` to handle slow server connections gracefully.
+- **Environment**: Verified compatibility with the upgraded .NET 10.0 backend.
+
  ## [1.0.0] - 2026-04-26
  ### Added
  - Created `vercel.json` for SPA routing fixes to handle direct URL navigation on Vercel.
